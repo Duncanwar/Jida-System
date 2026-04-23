@@ -1,0 +1,564 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+
+
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Poppins, sans-serif;
+}
+body {
+    /* display:flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh; */
+    /* background-image: url(/images/Campuses.png); */
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-color: transparent !important;
+     /* transition: all 1s ease-in-out; */
+    
+}
+body.auth-page{
+  justify-content: flex-start;
+  background-position: right center;
+}
+
+@media(max-width: 768px){
+  body.auth-page{
+    padding-right: 0;
+    background-position: center;
+    justify-content: center;
+  }
+}
+
+body.auth-page section{
+    position: relative;
+    max-width: 500px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    backdrop-filter: blur(55px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding : 2rem 3rem;
+    transition: all 0.5s ease-in-out;
+ 
+}
+h1{
+  font-size: 2rem;
+  color: #fff;
+  text-align: center; 
+}
+
+
+.inputbox{
+    position: relative;
+    margin: 20px 0;
+    max-width: 550px;
+    border-bottom: 2px solid #fff;
+    transition: all 0.5s ease-in-out;
+    
+}
+.inputbox input{
+  width: 100%;
+  height: 40px;
+  background: transparent !important;
+  border: none !important;
+  outline: none;
+  font-size: 1rem;
+  
+  padding: 0 35px 0 5px;
+  color: #fff;
+  border-radius: 30px;
+  background-color: transparent;
+}
+
+.inputbox select{
+  width: 100%;
+  height: 40px;
+  background: transparent !important;
+  border: none !important;
+  outline: none;
+  font-size: 1rem;
+  padding: 0 35px 0 5px;
+  color: #fff;
+}
+.inputbox .input-icon{
+    position: absolute;
+    right: 8px;
+    top: 12px;
+    font-size: 1.2rem;
+    transition: all 0.5s ease -in-out;
+    width: 1.2rem;
+    height: 1.2rem;
+    color: black;
+}
+
+.inputbox label{
+  position: absolute;
+  top: 1%;
+  left: 5px;
+  color: rgb(14, 13, 13);
+  font-size: 1rem;
+  font-weight: 1000;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: all 0.5s ease -in-out;
+}
+
+input:focus ~ label,
+input:valid ~ label,
+.inputbox select:focus ~ label,
+.input:-webkit-autofill ~ label{
+  top: -5px;
+  font-size: 0.9rem;
+  color: naturegreen;
+}
+
+.jida-auth-copy {
+  color: #fff;
+  text-align: center;
+  margin-bottom: 0.8rem;
+}
+
+.jida-auth-error {
+  color: #ffd7d7;
+  background: rgba(169, 17, 17, 0.45);
+  border: 1px solid rgba(255, 160, 160, 0.5);
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  margin-bottom: 0.8rem;
+  font-size: 0.9rem;
+}
+button{
+    width: 100%;
+    height: 40px;
+    border-radius: 40px;
+    background-color:rgba(255, 255, 255, 1) ;
+    border: none;
+    outline: none;
+    cursor: pointer;   
+    color: #000;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.4s ease;
+}
+button:hover{
+    background-color:rgba(255, 255, 255, 0.5) ;
+}
+
+.register{
+  font-size: 0.9rem;
+  color: #fff;
+  text-align: center;
+  margin: 25px O 10px;
+  transition: all 0.5s ease -in-out;
+}
+.register p a{
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.5s ease -in-out;
+}    
+.register p a:hover{
+  text-decoration: underline;
+  color: lightgreen;
+}
+
+/* Optional: Attempt to style autofill background (browser support varies) */
+.inputbox input:-webkit-autofill,
+.inputbox input:-webkit-autofill:hover, 
+.inputbox input:-webkit-autofill:focus, 
+.inputbox input:-webkit-autofill:active {
+    /* Change background color for autofill state (use a dark color that blends) */
+    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+    -webkit-text-fill-color: #fff !important; /* Force text color back to white for this background */
+    /* Add transition for a smoother look if you need it */
+    transition: background-color 5000s ease-in-out 0s;    
+}
+
+.remember-forgot{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+
+@layer base {
+  
+  body {
+     color: var(--foreground);
+    
+  }
+}
+
+.jida-shell {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(180deg, #f4f7fb 0%, #ebf1fa 100%);
+  color: #10223d;
+  display: grid;
+  gap: 1rem;
+}
+
+.jida-header {
+  border-radius: 16px;
+  border: 1px solid #d7e1f0;
+  background: #fff;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.jida-header h1 {
+  color: #10223d;
+  font-size: 1.2rem;
+}
+
+.jida-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-header nav a,
+.jida-actions a {
+  text-decoration: none;
+  border: 1px solid #c3d4ee;
+  color: #10223d;
+  background: #f5f9ff;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.jida-hero {
+  border-radius: 16px;
+  background: #10223d;
+  color: #fff;
+  padding: 1.5rem;
+}
+
+.jida-hero h1,
+.jida-hero h2 {
+  margin: 0;
+  text-align: left;
+}
+
+.jida-hero p {
+  margin-top: 0.75rem;
+  max-width: 65ch;
+  line-height: 1.5;
+}
+
+.jida-actions {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-card {
+  border-radius: 16px;
+  border: 1px solid #d7e1f0;
+  background: #fff;
+  padding: 1rem;
+}
+
+.jida-card h2 {
+  margin-bottom: 0.75rem;
+  font-size: 1.05rem;
+}
+
+.jida-muted {
+  color: #4d6b94;
+  margin-bottom: 0.8rem;
+}
+
+.jida-grid-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.jida-role-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-tab {
+  width: auto;
+  border-radius: 999px;
+  border: 1px solid #c3d4ee;
+  padding: 0.45rem 0.9rem;
+  background: #f5f9ff;
+  color: #10223d;
+}
+
+.jida-tab.active {
+  background: #10223d;
+  color: #fff;
+  border-color: #10223d;
+}
+
+.jida-panel {
+  margin-top: 0.9rem;
+  padding: 0.75rem;
+  border: 1px dashed #cad8ee;
+  border-radius: 12px;
+}
+
+.jida-panel ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.6;
+}
+
+.jida-form {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  border: 1px solid #d8e2f3;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.jida-form h3 {
+  color: #10223d;
+}
+
+.jida-form input,
+.jida-form select,
+.jida-form textarea,
+.jida-search {
+  border: 1px solid #c7d5ec;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  color: #10223d;
+}
+
+.jida-form button {
+  width: auto;
+  min-width: 170px;
+}
+
+.jida-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+  margin: 0.2rem 0 1rem;
+}
+
+.jida-metric {
+  border: 1px solid #d5e1f3;
+  border-radius: 12px;
+  padding: 0.7rem;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8ff 100%);
+}
+
+.jida-metric p {
+  font-size: 0.83rem;
+  color: #4a6790;
+}
+
+.jida-metric strong {
+  font-size: 1.2rem;
+  color: #10223d;
+}
+
+.jida-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-btn-primary,
+.jida-btn-secondary {
+  width: auto;
+  min-width: 170px;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 600;
+  height: auto;
+}
+
+.jida-btn-primary {
+  background: #10223d;
+  color: #fff;
+}
+
+.jida-btn-primary:hover {
+  background: #1a325a;
+}
+
+.jida-btn-secondary {
+  border: 1px solid #c3d4ee;
+  background: #f5f9ff;
+  color: #10223d;
+}
+
+.jida-btn-secondary:hover {
+  background: #eaf2ff;
+}
+
+.jida-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-step {
+  border: 1px solid #b3c8ea;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.9rem;
+  background: #f5f9ff;
+}
+
+.jida-small {
+  margin-top: 0.8rem;
+  color: #355078;
+}
+
+.jida-notifications {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.7;
+}
+
+.jida-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.jida-toolbar input,
+.jida-toolbar select {
+  border: 1px solid #c7d5ec;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  min-width: 220px;
+  color: #10223d;
+}
+
+.jida-table-wrap {
+  overflow-x: auto;
+}
+
+.jida-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+  background: #fff;
+  border: 1px solid #e2eaf6;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.jida-table th,
+.jida-table td {
+  border-bottom: 1px solid #e2eaf6;
+  text-align: left;
+  padding: 0.65rem 0.4rem;
+  font-size: 0.92rem;
+  color: #10223d;
+}
+
+.jida-table th {
+  color: #355078;
+  background: #f5f9ff;
+  font-weight: 700;
+}
+
+.jida-empty {
+  text-align: center;
+  color: #5878a6;
+}
+
+.jida-archive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.jida-issue {
+  border: 1px solid #d7e1f0;
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: #f9fcff;
+}
+
+.jida-issue h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+}
+
+.jida-issue p {
+  margin: 0.2rem 0;
+  font-size: 0.88rem;
+  color: #345073;
+}
+
+.jida-search {
+  width: min(460px, 100%);
+  margin-bottom: 0.8rem;
+}
+
+.jida-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #eef3fc;
+  color: #355078;
+  border: 1px solid #d3e0f3;
+}
+
+.jida-badge.success {
+  background: #e7f8ef;
+  color: #16653a;
+  border-color: #bfe8cf;
+}
+
+.jida-badge.info {
+  background: #e9f2ff;
+  color: #1e4f92;
+  border-color: #bfd7fb;
+}
+
+.jida-badge.warning {
+  background: #fff6e7;
+  color: #8a5a0f;
+  border-color: #f1dcba;
+}
+
+.jida-badge.danger {
+  background: #ffecee;
+  color: #952c35;
+  border-color: #f3c3c9;
+}
+
+@media (max-width: 768px) {
+  .jida-shell {
+    padding: 1rem;
+  }
+
+  .jida-table {
+    min-width: 100%;
+    font-size: 0.86rem;
+  }
+}
