@@ -360,7 +360,9 @@ button:hover{
 .jida-shell {
   min-height: 100vh;
   padding: 0;
-  background: #f3f7fc;
+  background:
+    linear-gradient(180deg, rgba(16, 34, 61, 0.88), rgba(18, 47, 89, 0.82)),
+    url("/images/gishushu_campus.jpg") center/cover fixed;
   color: #10223d;
   display: grid;
   gap: 0;
@@ -573,7 +575,8 @@ button:hover{
   min-height: 220px;
   border: 1px solid #d4e0f0;
   border-radius: 14px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   padding: 1.05rem;
   display: flex;
   flex-direction: column;
@@ -704,7 +707,8 @@ button:hover{
 .jida-card {
   border-radius: 14px;
   border: 1px solid #d7e1f0;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   padding: 1rem;
   box-shadow: 0 10px 24px rgba(16, 34, 61, 0.05);
 }
@@ -718,6 +722,9 @@ button:hover{
   display: grid;
   gap: 1rem;
   padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(16, 34, 61, 0.2), rgba(16, 34, 61, 0.42)),
+    url("/images/gishushu_campus.jpg") center/cover fixed;
 }
 
 .jida-page-title {
@@ -813,7 +820,8 @@ button:hover{
   padding: 1rem;
   border: 1px solid #d8e2f3;
   border-radius: 14px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   box-shadow: 0 10px 24px rgba(16, 34, 61, 0.06);
 }
 
@@ -1023,7 +1031,7 @@ button:hover{
   width: 100%;
   border-collapse: collapse;
   min-width: 0;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
   overflow: hidden;
 }
 
@@ -1144,7 +1152,8 @@ button:hover{
   border: 1px solid #d7e1f0;
   border-radius: 18px;
   padding: 1rem;
-  background: linear-gradient(180deg, #fff 0%, #f6faff 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(246, 250, 255, 0.88) 100%);
+  backdrop-filter: blur(10px);
   box-shadow: 0 12px 26px rgba(16, 34, 61, 0.06);
 }
 
@@ -1442,7 +1451,8 @@ button:hover{
   .jida-table tr {
     border: 1px solid #d7e1f0;
     border-radius: 14px;
-    background: #fff;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
     box-shadow: 0 10px 24px rgba(16, 34, 61, 0.06);
     overflow: hidden;
   }
