@@ -1,0 +1,1502 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+
+
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Poppins, sans-serif;
+}
+body {
+    /* display:flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh; */
+    /* background-image: url(/images/Campuses.png); */
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-color: transparent !important;
+     /* transition: all 1s ease-in-out; */
+    
+}
+body.auth-page{
+  background: #eef3f8 !important;
+  background-position: center;
+}
+
+@media(max-width: 768px){
+  body.auth-page{
+    padding-right: 0;
+    background-position: center;
+    justify-content: center;
+  }
+}
+
+.jida-auth-screen {
+  width: 100%;
+  min-height: 100vh;
+  padding: 2rem;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at top left, rgba(28, 59, 104, 0.16), transparent 34rem),
+    linear-gradient(135deg, #f7fafc 0%, #e9f0f8 100%);
+  color: #10223d;
+}
+
+.jida-auth-panel {
+  width: min(1080px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.jida-auth-intro,
+.jida-auth-card {
+  border: 1px solid #d7e1f0;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(16, 34, 61, 0.12);
+}
+
+.jida-auth-intro {
+  min-height: 560px;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(16, 34, 61, 0.94), rgba(31, 71, 123, 0.86)),
+    url("/images/gishushu_campus.jpg") center/cover;
+  color: #fff;
+}
+
+.jida-auth-intro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(16, 34, 61, 0.92) 82%);
+}
+
+.jida-auth-intro > * {
+  position: relative;
+  z-index: 1;
+}
+
+.jida-auth-eyebrow {
+  color: #6b88b6;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.jida-auth-intro .jida-auth-eyebrow {
+  color: #b7cdf0;
+}
+
+.jida-auth-intro h1 {
+  margin-top: 0.75rem;
+  max-width: 12ch;
+  color: #fff;
+  text-align: left;
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  line-height: 0.95;
+}
+
+.jida-auth-intro p:not(.jida-auth-eyebrow) {
+  margin-top: 1rem;
+  max-width: 56ch;
+  color: #dbe7f8;
+  line-height: 1.7;
+}
+
+.jida-auth-highlights {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.jida-auth-highlights span {
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #eef5ff;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.jida-auth-card {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.jida-auth-card-header h2 {
+  margin-top: 0.35rem;
+  color: #10223d;
+  font-size: 1.75rem;
+}
+
+.jida-auth-card-header p:not(.jida-auth-eyebrow) {
+  margin-top: 0.45rem;
+  color: #5a7194;
+  line-height: 1.55;
+}
+
+.jida-auth-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.jida-auth-field label {
+  color: #263d5f;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.jida-auth-field input,
+.jida-auth-field select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #c7d5ec;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #10223d;
+  font-size: 0.95rem;
+  outline: none;
+  padding: 0.7rem 0.85rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.jida-auth-field input:focus,
+.jida-auth-field select:focus {
+  border-color: #2e5fa4;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(46, 95, 164, 0.12);
+}
+
+.jida-auth-field input::placeholder {
+  color: #8aa0c0;
+}
+
+.jida-auth-card button {
+  min-height: 48px;
+  margin-top: 0.35rem;
+  border-radius: 12px;
+  background: #10223d;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(16, 34, 61, 0.18);
+}
+
+.jida-auth-card button:hover {
+  background: #1b365f;
+}
+
+.jida-auth-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+h1{
+  font-size: 2rem;
+  color: #fff;
+  text-align: center; 
+}
+
+
+.inputbox{
+    position: relative;
+    margin: 20px 0;
+    max-width: 550px;
+    border-bottom: 2px solid #fff;
+    transition: all 0.5s ease-in-out;
+    
+}
+.inputbox input{
+  width: 100%;
+  height: 40px;
+  background: transparent !important;
+  border: none !important;
+  outline: none;
+  font-size: 1rem;
+  
+  padding: 0 35px 0 5px;
+  color: #fff;
+  border-radius: 30px;
+  background-color: transparent;
+}
+
+.inputbox select{
+  width: 100%;
+  height: 40px;
+  background: transparent !important;
+  border: none !important;
+  outline: none;
+  font-size: 1rem;
+  padding: 0 35px 0 5px;
+  color: #fff;
+}
+.inputbox .input-icon{
+    position: absolute;
+    right: 8px;
+    top: 12px;
+    font-size: 1.2rem;
+    transition: all 0.5s ease -in-out;
+    width: 1.2rem;
+    height: 1.2rem;
+    color: black;
+}
+
+.inputbox label{
+  position: absolute;
+  top: 1%;
+  left: 5px;
+  color: rgb(14, 13, 13);
+  font-size: 1rem;
+  font-weight: 1000;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: all 0.5s ease -in-out;
+}
+
+input:focus ~ label,
+input:valid ~ label,
+.inputbox select:focus ~ label,
+.input:-webkit-autofill ~ label{
+  top: -5px;
+  font-size: 0.9rem;
+  color: naturegreen;
+}
+
+.jida-auth-copy {
+  color: #5a7194;
+  text-align: center;
+  margin-bottom: 0.8rem;
+}
+
+.jida-auth-error {
+  color: #8a1f2a;
+  background: #fff0f2;
+  border: 1px solid #f4bdc5;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  margin-bottom: 0.8rem;
+  font-size: 0.9rem;
+}
+button{
+    width: 100%;
+    height: 40px;
+    border-radius: 40px;
+    background-color:rgba(255, 255, 255, 1) ;
+    border: none;
+    outline: none;
+    cursor: pointer;   
+    color: #000;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.4s ease;
+}
+button:hover{
+    background-color:rgba(255, 255, 255, 0.5) ;
+}
+
+.register{
+  font-size: 0.9rem;
+  color: #fff;
+  text-align: center;
+  margin: 25px O 10px;
+  transition: all 0.5s ease -in-out;
+}
+.register p a{
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.5s ease -in-out;
+}    
+.register p a:hover{
+  text-decoration: underline;
+  color: lightgreen;
+}
+
+/* Optional: Attempt to style autofill background (browser support varies) */
+.inputbox input:-webkit-autofill,
+.inputbox input:-webkit-autofill:hover, 
+.inputbox input:-webkit-autofill:focus, 
+.inputbox input:-webkit-autofill:active {
+    /* Change background color for autofill state (use a dark color that blends) */
+    -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+    -webkit-text-fill-color: #fff !important; /* Force text color back to white for this background */
+    /* Add transition for a smoother look if you need it */
+    transition: background-color 5000s ease-in-out 0s;    
+}
+
+.remember-forgot{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+
+@layer base {
+  
+  body {
+     color: var(--foreground);
+    
+  }
+}
+
+.jida-shell {
+  min-height: 100vh;
+  padding: 0;
+  background: #f3f7fc;
+  color: #10223d;
+  display: grid;
+  gap: 0;
+  align-content: start;
+}
+
+.jida-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border: 0;
+  border-radius: 0;
+  background: #10223d;
+  box-shadow: 0 8px 22px rgba(16, 34, 61, 0.18);
+  backdrop-filter: blur(14px);
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.jida-header-kicker,
+.jida-section-kicker {
+  color: #6a81a5;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.jida-header h1 {
+  color: #fff;
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+
+.jida-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-header nav a,
+.jida-actions a {
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #eaf2ff;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 0.38rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.jida-header nav a:hover,
+.jida-actions a:hover {
+  border-color: #d79b2b;
+  background: rgba(215, 155, 43, 0.14);
+  transform: translateY(-1px);
+}
+
+.jida-header nav a.active {
+  border-color: #d79b2b;
+  background: #d79b2b;
+  color: #10223d;
+  box-shadow: 0 8px 18px rgba(215, 155, 43, 0.2);
+}
+
+.jida-hero {
+  border-radius: 16px;
+  background: #10223d;
+  color: #fff;
+  padding: 1.5rem;
+}
+
+.jida-hero h1,
+.jida-hero h2 {
+  margin: 0;
+  text-align: left;
+}
+
+.jida-hero p {
+  margin-top: 0.75rem;
+  max-width: 65ch;
+  line-height: 1.5;
+}
+
+.jida-home-hero {
+  min-height: 380px;
+  background:
+    linear-gradient(90deg, rgba(16, 34, 61, 0.98) 0%, rgba(16, 34, 61, 0.92) 52%, rgba(31, 71, 123, 0.9) 52%),
+    url("/images/gishushu_campus.jpg") center/cover;
+  color: #fff;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  align-items: end;
+  gap: 2rem;
+  padding: 3.5rem 3rem 2rem;
+}
+
+.jida-home-hero-copy {
+  max-width: 620px;
+}
+
+.jida-home-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(215, 155, 43, 0.75);
+  border-radius: 999px;
+  color: #f4c76f;
+  background: rgba(215, 155, 43, 0.14);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.jida-home-hero h2 {
+  margin-top: 1.2rem;
+  max-width: 12ch;
+  color: #fff;
+  font-size: clamp(2.5rem, 6vw, 4.8rem);
+  line-height: 0.98;
+}
+
+.jida-home-hero h2 span {
+  color: #f4c76f;
+}
+
+.jida-home-hero p {
+  margin-top: 1rem;
+  max-width: 58ch;
+  color: #c8d6ec;
+  line-height: 1.7;
+}
+
+.jida-home-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.jida-home-actions a {
+  min-width: 170px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef5ff;
+  padding: 0.7rem 1rem;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.jida-home-actions a:first-child {
+  background: #d79b2b;
+  border-color: #d79b2b;
+  color: #10223d;
+}
+
+.jida-home-hero-stats {
+  justify-self: end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  gap: 1rem;
+  width: min(430px, 100%);
+}
+
+.jida-home-hero-stats article {
+  text-align: center;
+}
+
+.jida-home-hero-stats strong,
+.jida-home-hero-stats span {
+  display: block;
+}
+
+.jida-home-hero-stats strong {
+  color: #fff;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.jida-home-hero-stats span {
+  margin-top: 0.35rem;
+  color: #a9bcda;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jida-home-content {
+  padding: 1.3rem 1.75rem 2rem;
+  display: grid;
+  gap: 1.2rem;
+}
+
+.jida-home-workspaces {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.jida-home-workspace-card {
+  min-height: 220px;
+  border: 1px solid #d4e0f0;
+  border-radius: 14px;
+  background: #fff;
+  padding: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 24px rgba(16, 34, 61, 0.05);
+}
+
+.jida-home-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+.jida-home-icon.blue {
+  background: #e8f1ff;
+  color: #1d4d91;
+}
+
+.jida-home-icon.green {
+  background: #e5f8f0;
+  color: #127452;
+}
+
+.jida-home-icon.gold {
+  background: #fff2d8;
+  color: #9b620a;
+}
+
+.jida-home-workspace-card h3 {
+  margin-top: 1rem;
+  color: #10223d;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.jida-home-workspace-card p {
+  margin-top: 0.45rem;
+  color: #506b92;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.jida-home-card-action {
+  margin-top: auto;
+  border-radius: 8px;
+  padding: 0.58rem 0.9rem;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.jida-home-card-action.blue {
+  background: #1d4d91;
+}
+
+.jida-home-card-action.green {
+  background: #127452;
+}
+
+.jida-home-card-action.gold {
+  background: #9b620a;
+}
+
+.jida-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.jida-home-manuscripts {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.jida-home-manuscripts article {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.jida-home-manuscripts strong {
+  color: #10223d;
+}
+
+.jida-home-manuscripts p {
+  margin-top: 0.2rem;
+  color: #506b92;
+  font-size: 0.84rem;
+}
+
+.jida-footer {
+  background: #10223d;
+  color: #dbe7f8;
+  padding: 1rem 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.82rem;
+}
+
+.jida-footer nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.jida-footer a {
+  color: #a9bcda;
+  text-decoration: none;
+}
+
+.jida-footer span {
+  color: #8299bc;
+}
+
+.jida-actions {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-card {
+  border-radius: 14px;
+  border: 1px solid #d7e1f0;
+  background: #fff;
+  padding: 1rem;
+  box-shadow: 0 10px 24px rgba(16, 34, 61, 0.05);
+}
+
+.jida-card h2 {
+  color: #10223d;
+  font-size: 1.12rem;
+}
+
+.jida-workspace {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.jida-page-title {
+  border: 1px solid #c9d8ee;
+  border-radius: 0 0 22px 22px;
+  background:
+    linear-gradient(135deg, rgba(16, 34, 61, 0.94), rgba(31, 71, 123, 0.9)),
+    url("/images/gishushu_campus.jpg") center/cover;
+  color: #fff;
+  padding: 1.45rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  box-shadow: 0 20px 46px rgba(16, 34, 61, 0.16);
+}
+
+.jida-page-title .jida-section-kicker {
+  color: #b7cdf0;
+}
+
+.jida-page-title h2 {
+  max-width: 14ch;
+  margin-top: 0.4rem;
+  color: #fff;
+  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+  line-height: 1;
+}
+
+.jida-page-title p:not(.jida-section-kicker) {
+  margin-top: 0.8rem;
+  max-width: 68ch;
+  color: #dbe7f8;
+  line-height: 1.55;
+}
+
+.jida-section-heading {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.jida-muted {
+  color: #4d6b94;
+  margin-bottom: 0.8rem;
+}
+
+.jida-grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.jida-role-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-tab {
+  width: auto;
+  border-radius: 999px;
+  border: 1px solid #c3d4ee;
+  padding: 0.45rem 0.9rem;
+  background: #f5f9ff;
+  color: #10223d;
+}
+
+.jida-tab.active {
+  background: #10223d;
+  color: #fff;
+  border-color: #10223d;
+}
+
+.jida-panel {
+  margin-top: 0.9rem;
+  padding: 0.75rem;
+  border: 1px dashed #cad8ee;
+  border-radius: 12px;
+}
+
+.jida-panel ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.6;
+}
+
+.jida-form {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid #d8e2f3;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(16, 34, 61, 0.06);
+}
+
+.jida-form-header {
+  margin-bottom: 0.3rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.jida-form-header span {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf5ff;
+  color: #1d4d91;
+  font-weight: 800;
+}
+
+.jida-form-header p {
+  margin-top: 0.25rem;
+  color: #5a7194;
+  line-height: 1.45;
+}
+
+.jida-form label {
+  display: grid;
+  gap: 0.28rem;
+  color: #263d5f;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  max-width: 340px;
+}
+
+.jida-form h3 {
+  color: #10223d;
+  font-size: 1.05rem;
+}
+
+.jida-form input,
+.jida-form select,
+.jida-form textarea,
+.jida-search {
+  width: min(100%, 340px);
+  border: 1px solid #c7d5ec;
+  border-radius: 7px;
+  background: #f8fbff;
+  padding: 0.42rem 0.55rem;
+  color: #10223d;
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.jida-form input,
+.jida-form select {
+  min-height: 34px;
+}
+
+.jida-form textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.jida-form input:focus,
+.jida-form select:focus,
+.jida-form textarea:focus,
+.jida-search:focus,
+.jida-toolbar input:focus,
+.jida-toolbar select:focus {
+  border-color: #2e5fa4;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(46, 95, 164, 0.11);
+}
+
+.jida-form button {
+  width: min(100%, 340px);
+}
+
+.jida-form-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d9e5f5, transparent);
+  margin: 0.2rem 0;
+}
+
+.jida-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.jida-metric {
+  border: 1px solid #d5e1f3;
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: linear-gradient(180deg, #fff 0%, #f5f9ff 100%);
+  box-shadow: 0 8px 20px rgba(16, 34, 61, 0.05);
+}
+
+.jida-metric p {
+  font-size: 0.83rem;
+  color: #4a6790;
+}
+
+.jida-metric strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.6rem;
+  color: #10223d;
+  line-height: 1;
+}
+
+.jida-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-btn-primary,
+.jida-btn-secondary {
+  width: auto;
+  min-width: 170px;
+  border-radius: 7px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  height: auto;
+}
+
+.jida-btn-primary {
+  background: #10223d;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(16, 34, 61, 0.14);
+}
+
+.jida-btn-primary:hover {
+  background: #1a325a;
+}
+
+.jida-btn-secondary {
+  border: 1px solid #c3d4ee;
+  background: #f5f9ff;
+  color: #10223d;
+}
+
+.jida-btn-secondary:hover {
+  background: #eaf2ff;
+}
+
+.jida-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-step {
+  border: 1px solid #b3c8ea;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.9rem;
+  background: #f5f9ff;
+}
+
+.jida-small {
+  margin-top: 0.8rem;
+  color: #355078;
+}
+
+.jida-notifications {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.7;
+}
+
+.jida-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+
+.jida-toolbar input,
+.jida-toolbar select {
+  border: 1px solid #c7d5ec;
+  border-radius: 7px;
+  padding: 0.38rem 0.5rem;
+  min-width: 170px;
+  font-size: 0.72rem;
+  color: #10223d;
+  background: #f8fbff;
+  outline: none;
+}
+
+.jida-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e2eaf6;
+  border-radius: 10px;
+}
+
+.jida-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 0;
+  background: #fff;
+  overflow: hidden;
+}
+
+.jida-table th,
+.jida-table td {
+  border-bottom: 1px solid #e2eaf6;
+  text-align: left;
+  padding: 0.32rem 0.42rem;
+  font-size: 0.72rem;
+  color: #10223d;
+  vertical-align: top;
+}
+
+.jida-table th {
+  color: #355078;
+  background: #f3f7fd;
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.jida-table td strong,
+.jida-table td span {
+  display: block;
+}
+
+.jida-table td strong {
+  margin-bottom: 0.08rem;
+  color: #10223d;
+  font-size: 0.72rem;
+}
+
+.jida-table td strong + span {
+  color: #4d6b94;
+  line-height: 1.15;
+  font-size: 0.68rem;
+}
+
+.jida-empty {
+  text-align: center;
+  color: #5878a6;
+}
+
+.jida-archive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.jida-archive-hero {
+  border: 1px solid #c9d8ee;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(16, 34, 61, 0.96), rgba(29, 77, 145, 0.88)),
+    url("/images/gishushu_campus.jpg") center/cover;
+  color: #fff;
+  padding: 2rem;
+  min-height: 300px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  box-shadow: 0 22px 54px rgba(16, 34, 61, 0.18);
+}
+
+.jida-archive-hero .jida-section-kicker {
+  color: #b7cdf0;
+}
+
+.jida-archive-hero h2 {
+  margin-top: 0.5rem;
+  max-width: 13ch;
+  color: #fff;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  line-height: 0.98;
+}
+
+.jida-archive-hero p:not(.jida-section-kicker) {
+  margin-top: 1rem;
+  max-width: 64ch;
+  color: #dbe7f8;
+  line-height: 1.7;
+}
+
+.jida-archive-stat {
+  min-width: 170px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 20px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.jida-archive-stat strong,
+.jida-archive-stat span {
+  display: block;
+}
+
+.jida-archive-stat strong {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.jida-archive-stat span {
+  margin-top: 0.35rem;
+  color: #dbe7f8;
+  font-weight: 700;
+}
+
+.jida-archive-search-card {
+  margin-top: -3rem;
+  position: relative;
+  z-index: 2;
+}
+
+.jida-issue {
+  border: 1px solid #d7e1f0;
+  border-radius: 18px;
+  padding: 1rem;
+  background: linear-gradient(180deg, #fff 0%, #f6faff 100%);
+  box-shadow: 0 12px 26px rgba(16, 34, 61, 0.06);
+}
+
+.jida-issue h3 {
+  margin-top: 0.3rem;
+  font-size: 1.08rem;
+  color: #10223d;
+}
+
+.jida-issue span {
+  color: #6a81a5;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jida-issue p {
+  margin-top: 0.65rem;
+  font-size: 0.88rem;
+  color: #345073;
+}
+
+.jida-issue strong {
+  display: inline-flex;
+  margin-top: 0.9rem;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #1d4d91;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.84rem;
+}
+
+.jida-search {
+  width: min(460px, 100%);
+  margin-bottom: 0.8rem;
+}
+
+.jida-search-wide {
+  width: 100%;
+  margin-bottom: 0;
+  min-height: 52px;
+  font-size: 1rem;
+}
+
+.jida-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.36rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  background: #eef3fc;
+  color: #355078;
+  border: 1px solid #d3e0f3;
+}
+
+.jida-notification-card {
+  align-self: start;
+}
+
+.jida-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.jida-list li {
+  border-left: 3px solid #2e5fa4;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 0.7rem 0.8rem;
+  color: #2d4567;
+  line-height: 1.45;
+}
+
+.jida-badge.success {
+  background: #e7f8ef;
+  color: #16653a;
+  border-color: #bfe8cf;
+}
+
+.jida-badge.info {
+  background: #e9f2ff;
+  color: #1e4f92;
+  border-color: #bfd7fb;
+}
+
+.jida-badge.warning {
+  background: #fff6e7;
+  color: #8a5a0f;
+  border-color: #f1dcba;
+}
+
+.jida-badge.danger {
+  background: #ffecee;
+  color: #952c35;
+  border-color: #f3c3c9;
+}
+
+@media (max-width: 1024px) {
+  .jida-grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-home-hero {
+    grid-template-columns: 1fr;
+    padding: 2.5rem 1.5rem 1.5rem;
+  }
+
+  .jida-home-hero-stats {
+    justify-self: start;
+  }
+
+  .jida-home-workspaces {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jida-page-title {
+    min-height: 240px;
+  }
+
+  .jida-page-title h2 {
+    max-width: 16ch;
+  }
+}
+
+@media (max-width: 768px) {
+  .jida-auth-screen {
+    padding: 0.75rem;
+  }
+
+  .jida-auth-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-auth-intro {
+    min-height: auto;
+    padding: 1.5rem;
+  }
+
+  .jida-auth-card {
+    padding: 1.2rem;
+  }
+
+  .jida-shell {
+    padding: 0;
+  }
+
+  .jida-header,
+  .jida-page-title,
+  .jida-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .jida-header {
+    position: sticky;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .jida-header nav {
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+
+  .jida-header nav a {
+    flex: 0 0 auto;
+    text-align: center;
+    padding: 0.32rem 0.58rem;
+    font-size: 0.74rem;
+  }
+
+  .jida-page-title {
+    min-height: auto;
+    border-radius: 0 0 18px 18px;
+    padding: 1.1rem 1rem;
+  }
+
+  .jida-page-title h2 {
+    max-width: 100%;
+    font-size: clamp(1.8rem, 9vw, 2.6rem);
+  }
+
+  .jida-page-title .jida-btn-primary,
+  .jida-action-row .jida-btn-primary,
+  .jida-action-row .jida-btn-secondary {
+    width: 100%;
+  }
+
+  .jida-home-content {
+    padding: 1rem;
+  }
+
+  .jida-home-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .jida-card,
+  .jida-form {
+    padding: 0.85rem;
+  }
+
+  .jida-grid-two,
+  .jida-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-archive-hero {
+    min-height: auto;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .jida-archive-search-card {
+    margin-top: 0;
+  }
+
+  .jida-toolbar input,
+  .jida-toolbar select,
+  .jida-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .jida-table {
+    min-width: 100%;
+    font-size: 0.86rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .jida-home-hero {
+    padding: 2rem 1rem 1.25rem;
+  }
+
+  .jida-home-hero h2 {
+    max-width: 100%;
+    font-size: clamp(2rem, 12vw, 3rem);
+  }
+
+  .jida-home-actions a,
+  .jida-home-hero-stats {
+    width: 100%;
+  }
+
+  .jida-home-hero-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .jida-home-workspaces {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-footer nav {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .jida-table-wrap {
+    border: 0;
+    overflow: visible;
+  }
+
+  .jida-table,
+  .jida-table thead,
+  .jida-table tbody,
+  .jida-table tr,
+  .jida-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .jida-table {
+    min-width: 0;
+    background: transparent;
+  }
+
+  .jida-table thead {
+    display: none;
+  }
+
+  .jida-table tr {
+    border: 1px solid #d7e1f0;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(16, 34, 61, 0.06);
+    overflow: hidden;
+  }
+
+  .jida-table tr + tr {
+    margin-top: 0.75rem;
+  }
+
+  .jida-table td {
+    border-bottom: 1px solid #edf2f8;
+    padding: 0.75rem;
+  }
+
+  .jida-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .jida-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #6a81a5;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 480px) {
+  .jida-shell {
+    padding: 0;
+  }
+
+  .jida-header nav {
+    grid-template-columns: none;
+  }
+
+  .jida-page-title,
+  .jida-card,
+  .jida-form {
+    border-radius: 12px;
+  }
+
+  .jida-page-title {
+    border-radius: 0 0 16px 16px;
+  }
+
+  .jida-form-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .jida-metric strong {
+    font-size: 1.55rem;
+  }
+}
