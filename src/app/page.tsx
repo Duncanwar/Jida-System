@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/features/jida/components";
-import { journalIssues, manuscripts, notifications, reviewAssignments } from "@/features/jida/data";
+import { getPublicIssues, getPublicArticles, type PublicIssue, type PublicArticle } from "@/lib/api";
 
 const workspaceCards = [
   {
@@ -34,8 +37,15 @@ const workspaceCards = [
 ];
 
 export default function Home() {
-  const articleCount = journalIssues.reduce((total, issue) => total + issue.articleCount, 0);
-  const recentManuscripts = manuscripts.slice(0, 3);
+  const [issues, setIssues] = useState<PublicIssue[]>([]);
+  const [articles, setArticles] = useState<PublicArticle[]>([]);
+
+  useEffect(() => {
+    getPublicIssues().then(setIssues).catch(() => {});
+    getPublicArticles().then(setArticles).catch(() => {});
+  }, []);
+
+  const articleCount = issues.reduce((total, issue) => total + issue.articleCount, 0);
 
   return (
     <main className="jida-shell">
@@ -52,14 +62,14 @@ export default function Home() {
             revision tracking, reviewer progress, and editorial publishing flow.
           </p>
           <div className="jida-home-actions">
-            <Link href="/author">Enter Workspace</Link>
+            <Link href="/login">Sign In</Link>
             <Link href="/archive">Browse Archive</Link>
           </div>
         </div>
 
         <div className="jida-home-hero-stats" aria-label="Platform statistics">
           <article>
-            <strong>{journalIssues.length}</strong>
+            <strong>{issues.length}</strong>
             <span>Volumes</span>
           </article>
           <article>
@@ -67,8 +77,8 @@ export default function Home() {
             <span>Articles</span>
           </article>
           <article>
-            <strong>{reviewAssignments.length}</strong>
-            <span>Reviewers</span>
+            <strong>{articles.length}</strong>
+            <span>Published</span>
           </article>
         </div>
       </section>
@@ -94,56 +104,38 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="jida-home-grid">
+        {articles.length > 0 && (
           <section className="jida-card">
             <div className="jida-section-heading">
               <div>
                 <p className="jida-section-kicker">Recent</p>
-                <h2>Recent Manuscripts</h2>
+                <h2>Latest Published Articles</h2>
               </div>
-              <span className="jida-badge info">3 active</span>
+              <span className="jida-badge info">{articles.length} total</span>
             </div>
-
             <div className="jida-home-manuscripts">
-              {recentManuscripts.map((item) => (
-                <article key={item.id}>
+              {articles.slice(0, 3).map((a) => (
+                <article key={a.id}>
                   <div>
-                    <strong>{item.id}</strong>
-                    <p>{item.title}</p>
+                    <strong>{a.authorName ?? "Unknown"}</strong>
+                    <p>{a.title}</p>
                   </div>
-                  <span className="jida-badge">{item.status}</span>
+                  <span className="jida-badge success">Published</span>
                 </article>
               ))}
             </div>
           </section>
-
-          <section className="jida-card">
-            <div className="jida-section-heading">
-              <div>
-                <p className="jida-section-kicker">Activity</p>
-                <h2>Email Notifications</h2>
-              </div>
-              <span className="jida-badge warning">Mock</span>
-            </div>
-
-            <ul className="jida-list">
-              {notifications.map((entry) => (
-                <li key={entry}>{entry}</li>
-              ))}
-            </ul>
-          </section>
-        </div>
+        )}
       </section>
 
       <footer className="jida-footer">
         <strong>JIDA System</strong>
         <nav>
-          <Link href="/archive">About</Link>
-          <Link href="/archive">Contact</Link>
-          <Link href="/archive">Privacy</Link>
-          <Link href="/archive">Terms</Link>
+          <Link href="/archive">Archive</Link>
+          <Link href="/login">Sign In</Link>
+          <Link href="/register">Register</Link>
         </nav>
-        <span>© 2026 Journal of Inter-Discourse Academia</span>
+        <span>© {new Date().getFullYear()} Journal of Inter-Discourse Academia</span>
       </footer>
     </main>
   );

@@ -1,19 +1,18 @@
 "use client";
 
-import { loginByRole, type LoginRole } from "@/lib/api";
+import { login, type Role } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { type FormEvent, useState } from "react";
 
-const routeByRole: Record<LoginRole, string> = {
-  author: "/author",
-  reviewer: "/reviewer",
-  editor: "/editor",
+const routeByRole: Record<Role, string> = {
+  AUTHOR: "/author",
+  REVIEWER: "/reviewer",
+  EDITOR: "/editor",
 };
 
 export function UnifiedLoginForm() {
   const router = useRouter();
-  const [role, setRole] = useState<LoginRole>("author");
+  const [role, setRole] = useState<Role>("AUTHOR");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,20 +24,20 @@ export function UnifiedLoginForm() {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
-    const role = String(formData.get("role") ?? "");
 
     try {
-      const result = await axios.post("http://localhost:4000/api/auth/login", { email, password, role });
-      console.log("Login result:", result.data);
-      // localStorage.setItem("token", result);
-      // localStorage.setItem("role", role);
-      // router.push(routeByRole[role]);
+      const result = await login(email, password, role);
+      localStorage.setItem("token", result.accessToken);
+      localStorage.setItem("role", role);
+      router.push(routeByRole[role]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
   };
+
+  const roleLabel = role.charAt(0) + role.slice(1).toLowerCase();
 
   return (
     <main className="jida-auth-screen">
@@ -73,11 +72,11 @@ export function UnifiedLoginForm() {
               id="role"
               name="role"
               value={role}
-              onChange={(event) => setRole(event.target.value as LoginRole)}
+              onChange={(e) => setRole(e.target.value as Role)}
             >
-              <option value="Author">Author</option>
-              <option value="Reviewer">Reviewer</option>
-              <option value="Editor">Editor</option>
+              <option value="AUTHOR">Author</option>
+              <option value="REVIEWER">Reviewer</option>
+              <option value="EDITOR">Editor</option>
             </select>
           </div>
 
@@ -105,12 +104,11 @@ export function UnifiedLoginForm() {
             />
           </div>
 
-          <button type="submit" onClick={() => handleSubmit} disabled={loading}>
-            {loading ? "Signing in..." : `Continue as ${role}`}
+          <button type="submit" disabled={loading}>
+            {loading ? "Signing in…" : `Continue as ${roleLabel}`}
           </button>
         </form>
       </section>
     </main>
   );
 }
-
