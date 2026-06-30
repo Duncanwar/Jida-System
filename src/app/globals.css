@@ -1597,34 +1597,42 @@ button:hover{
 
 .jida-action-panels {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
-.jida-panel-card {
+button.jida-panel-card {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1.1rem 1.25rem;
-  background: #ffffff;
-  text-align: left;
-  cursor: pointer;
   width: 100%;
   height: auto;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  min-height: unset;
+  padding: 1.1rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  border-left: 4px solid #e2e8f0;
+  text-align: left;
+  cursor: pointer;
   box-shadow: 0 1px 4px rgba(16, 34, 61, 0.05);
+  transition: border-color 0.2s, border-left-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
-.jida-panel-card:hover {
-  border-color: #2e5fa4;
-  box-shadow: 0 4px 16px rgba(16, 34, 61, 0.1);
-  transform: translateX(4px);
+button.jida-panel-card:hover {
+  border-color: #c3d4ee;
+  border-left-color: #2e5fa4;
+  box-shadow: 0 4px 14px rgba(16, 34, 61, 0.1);
+  transform: translateX(3px);
+  background: #fafcff;
 }
 
 .jida-panel-num {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 10px;
   background: #edf5ff;
   color: #1d4d91;
@@ -1634,6 +1642,7 @@ button:hover{
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
 .jida-panel-info {
@@ -1644,26 +1653,26 @@ button:hover{
 .jida-panel-info strong {
   display: block;
   color: #10223d;
-  font-size: 0.95rem;
+  font-size: 0.93rem;
   font-weight: 700;
-  margin-bottom: 0.18rem;
+  margin-bottom: 0.2rem;
 }
 
 .jida-panel-info p {
   color: #506b92;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .jida-panel-arrow {
-  color: #8299bc;
-  font-size: 1.1rem;
+  color: #b0c4de;
+  font-size: 1rem;
   flex-shrink: 0;
   transition: color 0.2s, transform 0.15s;
 }
 
-.jida-panel-card:hover .jida-panel-arrow {
+button.jida-panel-card:hover .jida-panel-arrow {
   color: #2e5fa4;
   transform: translateX(3px);
 }
@@ -1675,6 +1684,9 @@ button:hover{
 
 button.jida-back-btn {
   align-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   width: auto;
   height: auto;
   min-height: unset;
@@ -1684,7 +1696,7 @@ button.jida-back-btn {
   color: #2e5fa4;
   font-size: 0.82rem;
   font-weight: 700;
-  padding: 0.4rem 0.85rem;
+  padding: 0.42rem 0.9rem;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
 }
