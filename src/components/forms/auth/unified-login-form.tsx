@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { login, type Role } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -37,78 +38,75 @@ export function UnifiedLoginForm() {
     }
   };
 
-  const roleLabel = role.charAt(0) + role.slice(1).toLowerCase();
-
   return (
     <main className="jida-auth-screen">
-      <section className="jida-auth-panel" aria-labelledby="login-title">
-        <div className="jida-auth-intro">
-          <p className="jida-auth-eyebrow">JIDA Digital Platform</p>
-          <h1 id="login-title">Welcome back</h1>
-          <p>
-            Access the right workspace for journal submission, review, and editorial
-            publishing workflows.
-          </p>
-
-          <div className="jida-auth-highlights" aria-label="Platform highlights">
-            <span>Role-based access</span>
-            <span>Secure editorial workflows</span>
-            <span>Publication tracking</span>
+      <section className="jida-auth-form-side" aria-labelledby="login-title">
+        <div className="jida-auth-logo">
+          <span className="jida-auth-logo-badge">J</span>
+          <div>
+            <strong>JIDA System</strong>
+            <small>Journal of Inter-Discourse Academia</small>
           </div>
         </div>
 
-        <form id="unified-login" className="jida-auth-card" onSubmit={handleSubmit}>
-          <div className="jida-auth-card-header">
-            <p className="jida-auth-eyebrow">Sign in</p>
-            <h2>Choose your workspace</h2>
-            <p>Select your role and enter your credentials to continue.</p>
-          </div>
+        <div className="jida-auth-form-body">
+          <h1 id="login-title">Login</h1>
+          <p className="jida-auth-subtitle">Welcome! Please enter your details.</p>
 
-          {error ? <p className="jida-auth-error">{error}</p> : null}
+          <form className="jida-login-form" onSubmit={handleSubmit}>
+            {error ? <p className="jida-auth-error">{error}</p> : null}
 
-          <div className="jida-auth-field">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              name="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-            >
-              <option value="AUTHOR">Author</option>
-              <option value="REVIEWER">Reviewer</option>
-              <option value="EDITOR">Editor</option>
-            </select>
-          </div>
+            <div className="jida-login-field">
+              <label htmlFor="role">Role</label>
+              <select
+                id="role"
+                name="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+              >
+                <option value="AUTHOR">Author</option>
+                <option value="REVIEWER">Reviewer</option>
+                <option value="EDITOR">Editor</option>
+              </select>
+            </div>
 
-          <div className="jida-auth-field">
-            <label htmlFor="email">Email address</label>
-            <input
-              id="email"
-              type="email"
-              name="email"
-              placeholder="name@example.com"
-              autoComplete="email"
-              required
-            />
-          </div>
+            <div className="jida-login-field">
+              <label htmlFor="email">Email address</label>
+              <input
+                id="email"
+                type="email"
+                name="email"
+                placeholder="name@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
 
-          <div className="jida-auth-field">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              name="password"
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
+            <div className="jida-login-field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                name="password"
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                required
+              />
+            </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Signing in…" : `Continue as ${roleLabel}`}
-          </button>
-        </form>
+            <button type="submit" className="jida-login-btn" disabled={loading}>
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
+
+          <p className="jida-auth-signup-link">
+            Don&apos;t have an account?{" "}
+            <Link href="/register">Sign Up</Link>
+          </p>
+        </div>
       </section>
+
+      <div className="jida-auth-photo-side" aria-hidden="true" />
     </main>
   );
 }

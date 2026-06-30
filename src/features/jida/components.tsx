@@ -48,45 +48,70 @@ function badgeClass(value: string) {
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const links = [
-    { href: "/", label: "Home" },
-    { href: "/author", label: "Author" },
-    { href: "/reviewer", label: "Reviewer" },
-    { href: "/editor", label: "Editor" },
-    { href: "/archive", label: "Archive" },
-  ];
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem("token"));
-  }, []);
+    setUserRole(localStorage.getItem("role"));
+  }, [pathname]);
 
   function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
-    router.push("/login");
+    router.push("/");
   }
+
+  const isPublicPage = pathname === "/" || pathname === "/archive";
+  const roleLabel = userRole
+    ? userRole.charAt(0) + userRole.slice(1).toLowerCase()
+    : null;
 
   return (
     <header className="jida-header">
-      <div>
-        <p className="jida-header-kicker">Journal Management</p>
-        <h1>JIDA System</h1>
-      </div>
-      <nav>
-        {links.map((link) => (
-          <Link key={link.href} href={link.href} className={pathname === link.href ? "active" : undefined}>
-            {link.label}
-          </Link>
-        ))}
-        {isLoggedIn ? (
-          <button type="button" onClick={handleLogout} style={{ marginLeft: "0.5rem", cursor: "pointer" }}>
-            Log out
-          </button>
-        ) : (
-          <Link href="/login" style={{ marginLeft: "0.5rem" }}>Sign in</Link>
+      <Link href="/" className="jida-header-brand">
+        <span className="jida-header-kicker">Journal of Inter-Discourse Academia</span>
+        <strong className="jida-header-title">JIDA System</strong>
+      </Link>
+
+      <div className="jida-header-right">
+        {!isPublicPage && isLoggedIn && roleLabel && (
+          <span className="jida-role-badge">{roleLabel} Portal</span>
         )}
-      </nav>
+        <nav className="jida-header-nav">
+          {isPublicPage && !isLoggedIn && (
+            <>
+              <Link href="/register" className="jida-nav-ghost">Create Account</Link>
+              <Link href="/login" className="jida-nav-btn">Sign In</Link>
+            </>
+          )}
+          {isPublicPage && isLoggedIn && (
+            <>
+              <Link
+                href={
+                  userRole === "AUTHOR"
+                    ? "/author"
+                    : userRole === "REVIEWER"
+                      ? "/reviewer"
+                      : "/editor"
+                }
+                className="jida-nav-ghost"
+              >
+                My Workspace
+              </Link>
+              <button type="button" onClick={handleLogout} className="jida-nav-btn">
+                Log out
+              </button>
+            </>
+          )}
+          {!isPublicPage && (
+            <button type="button" onClick={handleLogout} className="jida-nav-btn">
+              Log out
+            </button>
+          )}
+        </nav>
+      </div>
     </header>
   );
 }
@@ -105,6 +130,7 @@ export function AuthorWorkspace() {
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [reviseMsg, setReviseMsg] = useState<string | null>(null);
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
   const submitRef = useRef<HTMLFormElement>(null);
   const reviseRef = useRef<HTMLFormElement>(null);
 
@@ -191,43 +217,74 @@ export function AuthorWorkspace() {
         <article className="jida-metric"><p>Published</p><strong>{publishedCount}</strong></article>
       </div>
 
-      <div className="jida-grid-two">
-        <form className="jida-form" ref={submitRef} onSubmit={handleSubmit} encType="multipart/form-data">
-          <div className="jida-form-header">
-            <span>01</span>
-            <div>
-              <h3>Submit Manuscript</h3>
-              <p>Provide the core article details before editorial screening.</p>
+      {activePanel === null && (
+        <div className="jida-action-panels">
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("submit")}>
+            <span className="jida-panel-num">01</span>
+            <div className="jida-panel-info">
+              <strong>Submit Manuscript</strong>
+              <p>Provide core article details before editorial screening.</p>
             </div>
-          </div>
-          {submitMsg && <p className={submitMsg.startsWith("Manuscript") ? "jida-badge success" : "jida-badge danger"}>{submitMsg}</p>}
-          <label>Title<input name="title" placeholder="Enter manuscript title" required /></label>
-          <label>Abstract<textarea name="abstract" placeholder="Briefly summarize the manuscript" rows={4} required /></label>
-          <label>Keywords<input name="keywords" placeholder="Comma-separated keywords" /></label>
-          <label>References<textarea name="references" placeholder="Paste references or citation list" rows={3} /></label>
-          <label>
-            Manuscript file (PDF / DOCX)
-            <input type="file" name="file" accept=".pdf,.docx" required />
-          </label>
-          <button type="submit" className="jida-btn-primary">Submit Manuscript</button>
-        </form>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("revise")}>
+            <span className="jida-panel-num">02</span>
+            <div className="jida-panel-info">
+              <strong>Upload Revision</strong>
+              <p>Respond to reviewer feedback with a revised version.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("profile")}>
+            <span className="jida-panel-num">03</span>
+            <div className="jida-panel-info">
+              <strong>Update Profile</strong>
+              <p>Keep your author information current.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+        </div>
+      )}
 
-        <div>
+      {activePanel === "submit" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setSubmitMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" ref={submitRef} onSubmit={handleSubmit} encType="multipart/form-data">
+            <div className="jida-form-header">
+              <span>01</span>
+              <div><h3>Submit Manuscript</h3><p>Provide the core article details before editorial screening.</p></div>
+            </div>
+            {submitMsg && <p className={submitMsg.startsWith("Manuscript") ? "jida-badge success" : "jida-badge danger"}>{submitMsg}</p>}
+            <label>Title<input name="title" placeholder="Enter manuscript title" required /></label>
+            <label>Abstract<textarea name="abstract" placeholder="Briefly summarize the manuscript" rows={4} required /></label>
+            <label>Keywords<input name="keywords" placeholder="Comma-separated keywords" /></label>
+            <label>References<textarea name="references" placeholder="Paste references or citation list" rows={3} /></label>
+            <label>Manuscript file (PDF / DOCX)<input type="file" name="file" accept=".pdf,.docx" required /></label>
+            <button type="submit" className="jida-btn-primary">Submit Manuscript</button>
+          </form>
+        </div>
+      )}
+
+      {activePanel === "revise" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setReviseMsg(null); }}>← Back to actions</button>
           <form className="jida-form" ref={reviseRef} onSubmit={handleRevision} encType="multipart/form-data">
             <div className="jida-form-header">
               <span>02</span>
-              <div>
-                <h3>Upload Revision</h3>
-                <p>Respond to reviewer feedback with a revised version.</p>
-              </div>
+              <div><h3>Upload Revision</h3><p>Respond to reviewer feedback with a revised version.</p></div>
             </div>
             {reviseMsg && <p>{reviseMsg}</p>}
             <label>Manuscript ID<input name="manuscriptId" placeholder="Paste ID from table below" required /></label>
             <label>Revised file<input type="file" name="file" accept=".pdf,.docx" required /></label>
             <button type="submit" className="jida-btn-primary">Upload Revised Version</button>
           </form>
+        </div>
+      )}
 
-          <form className="jida-form" onSubmit={handleProfile} style={{ marginTop: "1.5rem" }}>
+      {activePanel === "profile" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setProfileMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" onSubmit={handleProfile}>
             <div className="jida-form-header">
               <span>03</span>
               <div><h3>Update Profile</h3><p>Keep your author information current.</p></div>
@@ -238,7 +295,7 @@ export function AuthorWorkspace() {
             <button type="submit" className="jida-btn-primary">Update Profile</button>
           </form>
         </div>
-      </div>
+      )}
 
       <section className="jida-card">
         <div className="jida-section-heading">
@@ -304,6 +361,7 @@ export function ReviewerWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [reviewMsg, setReviewMsg] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -378,49 +436,78 @@ export function ReviewerWorkspace() {
       {loading && <p style={{ padding: "1rem" }}>Loading…</p>}
       {error && <p style={{ padding: "1rem", color: "red" }}>{error}</p>}
 
-      <div className="jida-grid-two">
-        <form className="jida-form" onSubmit={handleReview}>
-          <div className="jida-form-header">
-            <span>01</span>
-            <div><h3>Submit Review Evaluation</h3><p>Provide structured feedback for the manuscript.</p></div>
-          </div>
-          {reviewMsg && <p>{reviewMsg}</p>}
-          <label>Assignment ID<input name="assignmentId" placeholder="Paste ID from queue below" required /></label>
-          <label>Comments to Author<textarea name="commentsToAuthor" rows={3} placeholder="Feedback for the author" required /></label>
-          <label>Comments to Editor<textarea name="commentsToEditor" rows={3} placeholder="Notes for the editor" required /></label>
-          <label>
-            Recommendation
-            <select name="recommendation" defaultValue="">
-              <option value="" disabled>Select recommendation</option>
-              <option value="ACCEPT">Accept</option>
-              <option value="MINOR_REVISION">Minor Revision</option>
-              <option value="MAJOR_REVISION">Major Revision</option>
-              <option value="REJECT">Reject</option>
-            </select>
-          </label>
-          <button type="submit" className="jida-btn-primary">Submit Review</button>
-        </form>
+      {activePanel === null && (
+        <div className="jida-action-panels">
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("review")}>
+            <span className="jida-panel-num">01</span>
+            <div className="jida-panel-info">
+              <strong>Submit Review Evaluation</strong>
+              <p>Provide structured feedback and a recommendation for the manuscript.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("progress")}>
+            <span className="jida-panel-num">02</span>
+            <div className="jida-panel-info">
+              <strong>Update Review Progress</strong>
+              <p>Track your progress on an assigned manuscript.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+        </div>
+      )}
 
-        <form className="jida-form" onSubmit={handleProgress}>
-          <div className="jida-form-header">
-            <span>02</span>
-            <div><h3>Update Review Progress</h3><p>Track your progress on an assigned manuscript.</p></div>
-          </div>
-          {progressMsg && <p>{progressMsg}</p>}
-          <label>Assignment ID<input name="assignmentId" placeholder="Paste ID from queue below" required /></label>
-          <label>
-            Progress
-            <select name="progress" defaultValue="">
-              <option value="" disabled>Select progress</option>
-              <option value="NOT_STARTED">Not Started</option>
-              <option value="BEGIN_REVIEW">Begin Review</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="FINISHED_REVIEW">Finished Review</option>
-            </select>
-          </label>
-          <button type="submit" className="jida-btn-primary">Update Progress</button>
-        </form>
-      </div>
+      {activePanel === "review" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setReviewMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" onSubmit={handleReview}>
+            <div className="jida-form-header">
+              <span>01</span>
+              <div><h3>Submit Review Evaluation</h3><p>Provide structured feedback for the manuscript.</p></div>
+            </div>
+            {reviewMsg && <p>{reviewMsg}</p>}
+            <label>Assignment ID<input name="assignmentId" placeholder="Paste ID from queue below" required /></label>
+            <label>Comments to Author<textarea name="commentsToAuthor" rows={3} placeholder="Feedback for the author" required /></label>
+            <label>Comments to Editor<textarea name="commentsToEditor" rows={3} placeholder="Notes for the editor" required /></label>
+            <label>
+              Recommendation
+              <select name="recommendation" defaultValue="">
+                <option value="" disabled>Select recommendation</option>
+                <option value="ACCEPT">Accept</option>
+                <option value="MINOR_REVISION">Minor Revision</option>
+                <option value="MAJOR_REVISION">Major Revision</option>
+                <option value="REJECT">Reject</option>
+              </select>
+            </label>
+            <button type="submit" className="jida-btn-primary">Submit Review</button>
+          </form>
+        </div>
+      )}
+
+      {activePanel === "progress" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setProgressMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" onSubmit={handleProgress}>
+            <div className="jida-form-header">
+              <span>02</span>
+              <div><h3>Update Review Progress</h3><p>Track your progress on an assigned manuscript.</p></div>
+            </div>
+            {progressMsg && <p>{progressMsg}</p>}
+            <label>Assignment ID<input name="assignmentId" placeholder="Paste ID from queue below" required /></label>
+            <label>
+              Progress
+              <select name="progress" defaultValue="">
+                <option value="" disabled>Select progress</option>
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="BEGIN_REVIEW">Begin Review</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="FINISHED_REVIEW">Finished Review</option>
+              </select>
+            </label>
+            <button type="submit" className="jida-btn-primary">Update Progress</button>
+          </form>
+        </div>
+      )}
 
       <section className="jida-card">
         <div className="jida-section-heading">
@@ -496,6 +583,7 @@ export function EditorWorkspace() {
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
   const [decisionMsg, setDecisionMsg] = useState<string | null>(null);
   const [issueMsg, setIssueMsg] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
 
   async function fetchSubmissions() {
     setLoading(true);
@@ -584,20 +672,55 @@ export function EditorWorkspace() {
       {loading && <p style={{ padding: "1rem" }}>Loading…</p>}
       {error && <p style={{ padding: "1rem", color: "red" }}>{error}</p>}
 
-      <div className="jida-grid-two">
-        <form className="jida-form" onSubmit={handleAssign}>
-          <div className="jida-form-header">
-            <span>01</span>
-            <div><h3>Assign Reviewer</h3><p>Link a reviewer to a manuscript with a deadline.</p></div>
-          </div>
-          {assignMsg && <p>{assignMsg}</p>}
-          <label>Manuscript ID<input name="manuscriptId" placeholder="Paste ID from pipeline below" required /></label>
-          <label>Reviewer ID<input name="reviewerId" placeholder="Reviewer account ID" required /></label>
-          <label>Deadline<input type="date" name="deadline" required /></label>
-          <button type="submit" className="jida-btn-primary">Assign Reviewer</button>
-        </form>
+      {activePanel === null && (
+        <div className="jida-action-panels">
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("assign")}>
+            <span className="jida-panel-num">01</span>
+            <div className="jida-panel-info">
+              <strong>Assign Reviewer</strong>
+              <p>Link a reviewer to a manuscript with a deadline.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("decision")}>
+            <span className="jida-panel-num">02</span>
+            <div className="jida-panel-info">
+              <strong>Editorial Decision</strong>
+              <p>Accept, reject, or request revision on a submission.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("publish")}>
+            <span className="jida-panel-num">03</span>
+            <div className="jida-panel-info">
+              <strong>Publish to Issue</strong>
+              <p>Create an issue and publish an accepted manuscript.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+        </div>
+      )}
 
-        <div>
+      {activePanel === "assign" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setAssignMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" onSubmit={handleAssign}>
+            <div className="jida-form-header">
+              <span>01</span>
+              <div><h3>Assign Reviewer</h3><p>Link a reviewer to a manuscript with a deadline.</p></div>
+            </div>
+            {assignMsg && <p>{assignMsg}</p>}
+            <label>Manuscript ID<input name="manuscriptId" placeholder="Paste ID from pipeline below" required /></label>
+            <label>Reviewer ID<input name="reviewerId" placeholder="Reviewer account ID" required /></label>
+            <label>Deadline<input type="date" name="deadline" required /></label>
+            <button type="submit" className="jida-btn-primary">Assign Reviewer</button>
+          </form>
+        </div>
+      )}
+
+      {activePanel === "decision" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setDecisionMsg(null); }}>← Back to actions</button>
           <form className="jida-form" onSubmit={handleDecision}>
             <div className="jida-form-header">
               <span>02</span>
@@ -616,8 +739,13 @@ export function EditorWorkspace() {
             </label>
             <button type="submit" className="jida-btn-primary">Record Decision</button>
           </form>
+        </div>
+      )}
 
-          <form className="jida-form" onSubmit={handlePublish} style={{ marginTop: "1.5rem" }}>
+      {activePanel === "publish" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setIssueMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" onSubmit={handlePublish}>
             <div className="jida-form-header">
               <span>03</span>
               <div><h3>Publish to Issue</h3><p>Create an issue and publish an accepted manuscript.</p></div>
@@ -630,7 +758,7 @@ export function EditorWorkspace() {
             <button type="submit" className="jida-btn-primary">Publish to Journal Issue</button>
           </form>
         </div>
-      </div>
+      )}
 
       <section className="jida-card">
         <div className="jida-section-heading">
