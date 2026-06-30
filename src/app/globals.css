@@ -10,16 +10,9 @@
   font-family: Poppins, sans-serif;
 }
 body {
-    /* display:flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh; */
-    /* background-image: url(/images/Campuses.png); */
     background-repeat: no-repeat;
     background-size: cover;
     background-color: transparent !important;
-     /* transition: all 1s ease-in-out; */
-    
 }
 body.auth-page{
   background: #eef3f8 !important;
@@ -296,10 +289,9 @@ button{
     background-color:rgba(255, 255, 255, 1) ;
     border: none;
     outline: none;
-    cursor: pointer;   
+    cursor: pointer;
     color: #000;
     font-size: 1rem;
-    cursor: pointer;
     font-weight: 600;
     transition: all 0.4s ease;
 }
@@ -403,8 +395,8 @@ button:hover{
 .jida-actions a {
   text-decoration: none;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #eaf2ff;
-  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   padding: 0.38rem 0.7rem;
   font-size: 0.8rem;
@@ -472,8 +464,8 @@ button:hover{
   align-items: center;
   border: 1px solid rgba(215, 155, 43, 0.75);
   border-radius: 999px;
-  color: #f4c76f;
-  background: rgba(215, 155, 43, 0.14);
+  color: #10223d;
+  background: #d79b2b;
   padding: 0.35rem 0.7rem;
   font-size: 0.72rem;
   font-weight: 800;
@@ -1853,11 +1845,11 @@ button.jida-back-btn:hover {
 }
 
 .jida-role-badge {
-  border: 1px solid rgba(215, 155, 43, 0.45);
+  border: 1px solid rgba(215, 155, 43, 0.55);
   border-radius: 6px;
   padding: 0.28rem 0.65rem;
-  background: rgba(215, 155, 43, 0.12);
-  color: #f4c76f;
+  background: #d79b2b;
+  color: #10223d;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -1885,7 +1877,7 @@ button.jida-back-btn:hover {
 
 .jida-nav-ghost:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .jida-header-nav a.jida-nav-btn,
