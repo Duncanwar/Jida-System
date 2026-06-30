@@ -1,18 +1,18 @@
 "use client";
 
-import { loginByRole, type LoginRole } from "@/lib/api";
+import { login, type Role } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
-const routeByRole: Record<LoginRole, string> = {
-  author: "/author",
-  reviewer: "/reviewer",
-  editor: "/editor",
+const routeByRole: Record<Role, string> = {
+  AUTHOR: "/author",
+  REVIEWER: "/reviewer",
+  EDITOR: "/editor",
 };
 
 export function UnifiedLoginForm() {
   const router = useRouter();
-  const [role, setRole] = useState<LoginRole>("author");
+  const [role, setRole] = useState<Role>("AUTHOR");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,8 +26,8 @@ export function UnifiedLoginForm() {
     const password = String(formData.get("password") ?? "");
 
     try {
-      const result = await loginByRole(role, email, password);
-      localStorage.setItem("token", result.token);
+      const result = await login(email, password, role);
+      localStorage.setItem("token", result.accessToken);
       localStorage.setItem("role", role);
       router.push(routeByRole[role]);
     } catch (err) {
@@ -36,6 +36,8 @@ export function UnifiedLoginForm() {
       setLoading(false);
     }
   };
+
+  const roleLabel = role.charAt(0) + role.slice(1).toLowerCase();
 
   return (
     <main className="jida-auth-screen">
@@ -70,11 +72,11 @@ export function UnifiedLoginForm() {
               id="role"
               name="role"
               value={role}
-              onChange={(event) => setRole(event.target.value as LoginRole)}
+              onChange={(e) => setRole(e.target.value as Role)}
             >
-              <option value="author">Author</option>
-              <option value="reviewer">Reviewer</option>
-              <option value="editor">Editor</option>
+              <option value="AUTHOR">Author</option>
+              <option value="REVIEWER">Reviewer</option>
+              <option value="EDITOR">Editor</option>
             </select>
           </div>
 
@@ -103,11 +105,10 @@ export function UnifiedLoginForm() {
           </div>
 
           <button type="submit" disabled={loading}>
-            {loading ? "Signing in..." : `Continue as ${role}`}
+            {loading ? "Signing in…" : `Continue as ${roleLabel}`}
           </button>
         </form>
       </section>
     </main>
   );
 }
-
