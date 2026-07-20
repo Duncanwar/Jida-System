@@ -9,6 +9,7 @@ const routeByRole: Record<Role, string> = {
   AUTHOR: "/author",
   REVIEWER: "/reviewer",
   EDITOR: "/editor",
+  ADMIN: "/admin",
 };
 
 export function UnifiedLoginForm() {
@@ -28,9 +29,14 @@ export function UnifiedLoginForm() {
 
     try {
       const result = await login(email, password, role);
+      // Trust the role from the server, not the dropdown selection.
+      const actualRole = result.user?.role ?? role;
+      if (actualRole !== role) {
+        setError(`This account is registered as ${actualRole.toLowerCase()}, not ${role.toLowerCase()}. Signing you into your ${actualRole.toLowerCase()} workspace.`);
+      }
       localStorage.setItem("token", result.accessToken);
-      localStorage.setItem("role", role);
-      router.push(routeByRole[role]);
+      localStorage.setItem("role", actualRole);
+      router.push(routeByRole[actualRole]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -67,6 +73,7 @@ export function UnifiedLoginForm() {
                 <option value="AUTHOR">Author</option>
                 <option value="REVIEWER">Reviewer</option>
                 <option value="EDITOR">Editor</option>
+                <option value="ADMIN">Admin</option>
               </select>
             </div>
 

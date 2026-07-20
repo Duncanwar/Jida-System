@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Settings, X, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   getManuscripts,
   submitManuscript,
   submitRevision,
   patchMe,
+  getSubmissionSettings,
+  downloadFile,
+  getReviewers,
+  setScholarReady,
   getAssignments,
   getReviewHistory,
   updateReviewProgress,
@@ -19,6 +24,9 @@ import {
   publishToIssue,
   getPublicIssues,
   getPublicArticles,
+  adminGetUsers,
+  adminCreateUser,
+  adminDeleteUser,
   type ManuscriptSummary,
   type Assignment,
   type EditorSubmission,
@@ -26,6 +34,9 @@ import {
   type PublicArticle,
   type ReviewProgress,
   type ReviewRecommendation,
+  type AdminUser,
+  type UserRole,
+  type ReviewerOption,
 } from "@/lib/api";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -43,6 +54,101 @@ function badgeClass(value: string) {
   return "jida-badge";
 }
 
+// ─── ProfileModal ──────────────────────────────────────────────────────────
+
+function ProfileModal({ onClose }: { onClose: () => void }) {
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    const fd = new FormData(e.currentTarget);
+    try {
+      await patchMe({
+        name: String(fd.get("name") ?? ""),
+        institution: String(fd.get("institution") ?? ""),
+      });
+      setSaved(true);
+      setTimeout(onClose, 1400);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="jida-modal-overlay" onClick={onClose}>
+      <div
+        className="jida-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Update profile"
+      >
+        <div className="jida-modal-header">
+          <div className="jida-modal-avatar">
+            <User size={20} />
+          </div>
+          <div>
+            <p className="jida-section-kicker">Account</p>
+            <h3>Update Profile</h3>
+          </div>
+          <button className="jida-modal-close" onClick={onClose} aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+
+        {saved ? (
+          <div className="jida-modal-saved">
+            <span>✓</span>
+            <p>Profile updated successfully</p>
+          </div>
+        ) : (
+          <form className="jida-modal-form" onSubmit={handleSave}>
+            {error && <p className="jida-modal-error">{error}</p>}
+            <label>
+              Full Name
+              <input type="text" name="name" placeholder="Your full name" />
+            </label>
+            <label>
+              Email
+              <input type="email" name="email" placeholder="email@example.com" />
+            </label>
+            <label>
+              Institution
+              <input type="text" name="institution" placeholder="Institution or affiliation" />
+            </label>
+            <label>
+              Profile Picture
+              <input type="file" name="profilePic" accept="image/*" />
+            </label>
+            <div className="jida-modal-actions">
+              <button type="submit" className="jida-btn-primary" disabled={saving}>
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+              <button type="button" className="jida-btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── AppHeader ─────────────────────────────────────────────────────────────
 
 export function AppHeader() {
@@ -51,9 +157,10 @@ export function AppHeader() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem("token"));
+    setIsLoggedIn(!!localStorage.getItem("token")); 
     setUserRole(localStorage.getItem("role"));
   }, [pathname]);
 
@@ -62,57 +169,79 @@ export function AppHeader() {
     localStorage.removeItem("role");
     router.push("/");
   }
-
+  
   const isPublicPage = pathname === "/" || pathname === "/archive";
   const roleLabel = userRole
     ? userRole.charAt(0) + userRole.slice(1).toLowerCase()
     : null;
 
   return (
-    <header className="jida-header">
-      <Link href="/" className="jida-header-brand">
-        <span className="jida-header-kicker">Journal of Inter-Discourse Academia</span>
-        <strong className="jida-header-title">JIDA System</strong>
-      </Link>
+    <>
+      <header className="jida-header">
+        <Link href="/" className="jida-header-brand">
+          <span className="jida-header-kicker">Journal of Inter-Discourse Academia</span>
+          <strong className="jida-header-title">JIDA System</strong>
+        </Link>
 
-      <div className="jida-header-right">
-        {!isPublicPage && isLoggedIn && roleLabel && (
-          <span className="jida-role-badge">{roleLabel} Portal</span>
-        )}
-        <nav className="jida-header-nav">
-          {isPublicPage && !isLoggedIn && (
-            <>
-              <Link href="/register" className="jida-nav-ghost">Create Account</Link>
-              <Link href="/login" className="jida-nav-btn">Sign In</Link>
-            </>
+        <div className="jida-header-right">
+          {!isPublicPage && isLoggedIn && roleLabel && (
+            <span className="jida-role-badge">{roleLabel} Portal</span>
           )}
-          {isPublicPage && isLoggedIn && (
-            <>
-              <Link
-                href={
-                  userRole === "AUTHOR"
-                    ? "/author"
-                    : userRole === "REVIEWER"
-                      ? "/reviewer"
-                      : "/editor"
-                }
-                className="jida-nav-ghost"
-              >
-                My Workspace
-              </Link>
-              <button type="button" onClick={handleLogout} className="jida-nav-btn">
-                Log out
-              </button>
-            </>
-          )}
-          {!isPublicPage && (
-            <button type="button" onClick={handleLogout} className="jida-nav-btn">
-              Log out
-            </button>
-          )}
-        </nav>
-      </div>
-    </header>
+          <nav className="jida-header-nav">
+            {isPublicPage && !isLoggedIn && (
+              <>
+                <Link href="/register" className="jida-nav-ghost">Create Account</Link>
+                <Link href="/login" className="jida-nav-btn">Sign In</Link>
+              </>
+            )}
+            {isPublicPage && isLoggedIn && (
+              <>
+                <Link
+                  href={
+                    userRole === "AUTHOR" ? "/author"
+                    : userRole === "REVIEWER" ? "/reviewer"
+                    : userRole === "ADMIN" ? "/admin"
+                    : "/editor"
+                  }
+                  className="jida-nav-ghost"
+                >
+                  My Workspace
+                </Link>
+                <button
+                  type="button"
+                  className="jida-settings-btn"
+                  onClick={() => setShowProfile(true)}
+                  title="Profile settings"
+                  aria-label="Open profile settings"
+                >
+                  <Settings size={16} />
+                </button>
+                <button type="button" onClick={handleLogout} className="jida-nav-btn">
+                  Log out
+                </button>
+              </>
+            )}
+            {!isPublicPage && isLoggedIn && (
+              <>
+                <button
+                  type="button"
+                  className="jida-settings-btn"
+                  onClick={() => setShowProfile(true)}
+                  title="Profile settings"
+                  aria-label="Open profile settings"
+                >
+                  <Settings size={16} />
+                </button>
+                <button type="button" onClick={handleLogout} className="jida-nav-btn">
+                  Log out
+                </button>
+              </>
+            )}
+          </nav>
+        </div>
+      </header>
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+    </>
   );
 }
 
@@ -129,10 +258,24 @@ export function AuthorWorkspace() {
   const [listError, setListError] = useState<string | null>(null);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [reviseMsg, setReviseMsg] = useState<string | null>(null);
-  const [profileMsg, setProfileMsg] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [deadline, setDeadline] = useState<string | null>(null);
+  const [openForSubmissions, setOpenForSubmissions] = useState(true);
   const submitRef = useRef<HTMLFormElement>(null);
   const reviseRef = useRef<HTMLFormElement>(null);
+
+  // FR-A12 — show the journal's manuscript submission deadline to authors.
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await getSubmissionSettings();
+        setDeadline(s.submissionDeadline);
+        setOpenForSubmissions(s.openForSubmissions);
+      } catch {
+        /* non-blocking */
+      }
+    })();
+  }, []);
 
   async function fetchList(q?: string) {
     setLoadingList(true);
@@ -183,21 +326,6 @@ export function AuthorWorkspace() {
     }
   }
 
-  async function handleProfile(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setProfileMsg(null);
-    const fd = new FormData(e.currentTarget);
-    try {
-      await patchMe({
-        name: String(fd.get("name") ?? ""),
-        institution: String(fd.get("institution") ?? ""),
-      });
-      setProfileMsg("Profile updated.");
-    } catch (err) {
-      setProfileMsg(err instanceof Error ? err.message : "Update failed");
-    }
-  }
-
   const publishedCount = manuscripts.filter((m) => m.status === "PUBLISHED").length;
   const revisionCount = manuscripts.filter((m) => m.status === "REVISION_REQUIRED").length;
 
@@ -217,6 +345,20 @@ export function AuthorWorkspace() {
         <article className="jida-metric"><p>Published</p><strong>{publishedCount}</strong></article>
       </div>
 
+      {/* FR-A12 — submission deadline banner */}
+      <div className="jida-card" style={{ padding: "0.85rem 1.1rem" }}>
+        {!openForSubmissions ? (
+          <p className="jida-badge danger">Submissions are currently closed.</p>
+        ) : deadline ? (
+          <p>
+            <span className="jida-badge warning">Submission deadline</span>{" "}
+            Manuscripts must be submitted by <strong>{deadline.slice(0, 10)}</strong>.
+          </p>
+        ) : (
+          <p><span className="jida-badge success">Submissions open</span> No submission deadline is currently set.</p>
+        )}
+      </div>
+
       {activePanel === null && (
         <div className="jida-action-panels">
           <button type="button" className="jida-panel-card" onClick={() => setActivePanel("submit")}>
@@ -232,14 +374,6 @@ export function AuthorWorkspace() {
             <div className="jida-panel-info">
               <strong>Upload Revision</strong>
               <p>Respond to reviewer feedback with a revised version.</p>
-            </div>
-            <span className="jida-panel-arrow">→</span>
-          </button>
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("profile")}>
-            <span className="jida-panel-num">03</span>
-            <div className="jida-panel-info">
-              <strong>Update Profile</strong>
-              <p>Keep your author information current.</p>
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
@@ -281,22 +415,6 @@ export function AuthorWorkspace() {
         </div>
       )}
 
-      {activePanel === "profile" && (
-        <div className="jida-form-panel">
-          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setProfileMsg(null); }}>← Back to actions</button>
-          <form className="jida-form" onSubmit={handleProfile}>
-            <div className="jida-form-header">
-              <span>03</span>
-              <div><h3>Update Profile</h3><p>Keep your author information current.</p></div>
-            </div>
-            {profileMsg && <p>{profileMsg}</p>}
-            <label>Display name<input name="name" placeholder="Author display name" /></label>
-            <label>Institution<input name="institution" placeholder="Institution or affiliation" /></label>
-            <button type="submit" className="jida-btn-primary">Update Profile</button>
-          </form>
-        </div>
-      )}
-
       <section className="jida-card">
         <div className="jida-section-heading">
           <div>
@@ -327,7 +445,7 @@ export function AuthorWorkspace() {
                   <th>Title</th>
                   <th>Status</th>
                   <th>Submitted</th>
-                  <th>Deadline</th>
+                  <th>Published Article</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,8 +454,26 @@ export function AuthorWorkspace() {
                     <td data-label="ID"><code style={{ fontSize: "0.75rem" }}>{item.id}</code></td>
                     <td data-label="Title">{item.title}</td>
                     <td data-label="Status"><span className={badgeClass(item.status)}>{statusLabel(item.status)}</span></td>
-                    <td data-label="Submitted">{item.submittedAt?.slice(0, 10)}</td>
-                    <td data-label="Deadline">{item.submissionDeadline?.slice(0, 10) ?? "—"}</td>
+                    <td data-label="Submitted">{(item.createdAt ?? item.submittedAt)?.slice(0, 10) ?? "—"}</td>
+                    <td data-label="Published Article">
+                      {item.publication ? (
+                        <button
+                          type="button"
+                          className="jida-badge info"
+                          style={{ cursor: "pointer", border: "none" }}
+                          onClick={() =>
+                            downloadFile(
+                              `/api/manuscripts/published/${item.publication!.slug}/download`,
+                              `${item.title}.pdf`,
+                            ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                          }
+                        >
+                          Download
+                        </button>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {manuscripts.length === 0 && (
@@ -523,6 +659,7 @@ export function ReviewerWorkspace() {
                 <th>Deadline</th>
                 <th>Progress</th>
                 <th>Recommendation</th>
+                <th>File</th>
               </tr>
             </thead>
             <tbody>
@@ -537,10 +674,26 @@ export function ReviewerWorkspace() {
                       {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
                     </span>
                   </td>
+                  <td data-label="File">
+                    {/* FR-R3 — download assigned manuscript */}
+                    <button
+                      type="button"
+                      className="jida-badge info"
+                      style={{ cursor: "pointer", border: "none" }}
+                      onClick={() =>
+                        downloadFile(
+                          `/api/reviewer/assignments/${a.id}/download`,
+                          `${a.manuscriptTitle ?? a.manuscriptId ?? "manuscript"}.pdf`,
+                        ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                      }
+                    >
+                      Download
+                    </button>
+                  </td>
                 </tr>
               ))}
               {assignments.length === 0 && !loading && (
-                <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
               )}
             </tbody>
           </table>
@@ -584,6 +737,18 @@ export function EditorWorkspace() {
   const [decisionMsg, setDecisionMsg] = useState<string | null>(null);
   const [issueMsg, setIssueMsg] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [reviewers, setReviewers] = useState<ReviewerOption[]>([]);
+
+  // FR-E3 — load available reviewers for assignment.
+  useEffect(() => {
+    (async () => {
+      try {
+        setReviewers(await getReviewers());
+      } catch {
+        /* non-blocking */
+      }
+    })();
+  }, []);
 
   async function fetchSubmissions() {
     setLoading(true);
@@ -640,10 +805,15 @@ export function EditorWorkspace() {
     const issue = Number(fd.get("issueNum"));
     const year = Number(fd.get("year"));
     const manuscriptId = String(fd.get("manuscriptId") ?? "").trim();
+    const scholar = fd.get("scholar") === "on";
     try {
       const { id: issueId } = await createIssue({ volume, issue, year });
-      await publishToIssue(issueId, manuscriptId);
-      setIssueMsg("Manuscript published to issue.");
+      const publication = await publishToIssue(issueId, manuscriptId);
+      // FR-E12 — expose the published work to Google Scholar indexing.
+      if (scholar && publication?.id) {
+        await setScholarReady(publication.id, true);
+      }
+      setIssueMsg(scholar ? "Manuscript published and marked for Google Scholar indexing." : "Manuscript published to issue.");
       fetchSubmissions();
     } catch (err) {
       setIssueMsg(err instanceof Error ? err.message : "Publish failed");
@@ -711,7 +881,21 @@ export function EditorWorkspace() {
             </div>
             {assignMsg && <p>{assignMsg}</p>}
             <label>Manuscript ID<input name="manuscriptId" placeholder="Paste ID from pipeline below" required /></label>
-            <label>Reviewer ID<input name="reviewerId" placeholder="Reviewer account ID" required /></label>
+            <label>
+              Reviewer
+              {reviewers.length > 0 ? (
+                <select name="reviewerId" defaultValue="" required>
+                  <option value="" disabled>Select a reviewer</option>
+                  {reviewers.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {[r.firstName, r.lastName].filter(Boolean).join(" ") || r.email} — {r.email}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input name="reviewerId" placeholder="Reviewer account ID" required />
+              )}
+            </label>
             <label>Deadline<input type="date" name="deadline" required /></label>
             <button type="submit" className="jida-btn-primary">Assign Reviewer</button>
           </form>
@@ -755,6 +939,10 @@ export function EditorWorkspace() {
             <label>Volume<input type="number" name="volume" placeholder="e.g. 12" min={1} required /></label>
             <label>Issue number<input type="number" name="issueNum" placeholder="e.g. 2" min={1} required /></label>
             <label>Year<input type="number" name="year" defaultValue={new Date().getFullYear()} min={2000} required /></label>
+            <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+              <input type="checkbox" name="scholar" defaultChecked style={{ width: "auto" }} />
+              Publish to Google Scholar (adds citation metadata for indexing)
+            </label>
             <button type="submit" className="jida-btn-primary">Publish to Journal Issue</button>
           </form>
         </div>
@@ -890,7 +1078,10 @@ export function ArchiveWorkspace() {
             <tbody>
               {articles.map((a) => (
                 <tr key={a.id}>
-                  <td data-label="Article"><strong>{a.title}</strong><span>{a.id}</span></td>
+                  <td data-label="Article">
+                    <Link href={`/archive/${a.slug}`}><strong>{a.title}</strong></Link>
+                    <span>{a.id}</span>
+                  </td>
                   <td data-label="Author">{a.authorName ?? "—"}</td>
                   <td data-label="Issue">{a.issue ?? "—"}</td>
                   <td data-label="Keywords">{a.keywords?.join(", ") ?? "—"}</td>
@@ -914,5 +1105,249 @@ export function ArchiveWorkspace() {
         </div>
       </section>
     </section>
+  );
+}
+
+// ─── AdminWorkspace ────────────────────────────────────────────────────────
+
+type AdminTab = "users" | "author" | "reviewer" | "editor";
+
+const ADMIN_TABS: { id: AdminTab; label: string }[] = [
+  { id: "users",    label: "User Management" },
+  { id: "author",   label: "Author Tasks" },
+  { id: "reviewer", label: "Reviewer Tasks" },
+  { id: "editor",   label: "Editor Tasks" },
+];
+
+const ROLE_BADGE: Record<UserRole, string> = {
+  AUTHOR:   "jida-badge info",
+  REVIEWER: "jida-badge success",
+  EDITOR:   "jida-badge warning",
+};
+
+export function AdminWorkspace() {
+  const [activeTab, setActiveTab] = useState<AdminTab>("users");
+  const [users, setUsers]         = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError]     = useState<string | null>(null);
+  const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [creating, setCreating]   = useState(false);
+  const [deleting, setDeleting]   = useState<string | null>(null);
+  const createRef = useRef<HTMLFormElement>(null);
+
+  async function fetchUsers() {
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      setUsers(await adminGetUsers());
+    } catch (e) {
+      setUsersError(e instanceof Error ? e.message : "Failed to load users");
+    } finally {
+      setUsersLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "users") fetchUsers();
+  }, [activeTab]);
+
+  async function handleCreateUser(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setCreating(true);
+    setCreateMsg(null);
+    const fd = new FormData(e.currentTarget);
+    try {
+      const created = await adminCreateUser({
+        email:       String(fd.get("email") ?? ""),
+        password:    String(fd.get("password") ?? ""),
+        role:        String(fd.get("role") ?? "AUTHOR") as UserRole,
+        name:        String(fd.get("name") ?? "") || undefined,
+        institution: String(fd.get("institution") ?? "") || undefined,
+      });
+      setCreateMsg({ ok: true, text: `User "${created.email}" created as ${created.role}.` });
+      createRef.current?.reset();
+      fetchUsers();
+    } catch (err) {
+      setCreateMsg({ ok: false, text: err instanceof Error ? err.message : "Creation failed" });
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleDelete(userId: string, email: string) {
+    if (!confirm(`Remove user "${email}"? This cannot be undone.`)) return;
+    setDeleting(userId);
+    try {
+      await adminDeleteUser(userId);
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  return (
+    <>
+      {/* ── Admin tab bar ─────────────────────────────────────── */}
+      <div className="jida-admin-tabbar">
+        <span className="jida-admin-tabbar-label">Admin</span>
+        <nav className="jida-admin-tabs">
+          {ADMIN_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`jida-admin-tab${activeTab === tab.id ? " active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* ── User Management ───────────────────────────────────── */}
+      {activeTab === "users" && (
+        <section className="jida-workspace">
+          <div className="jida-page-title">
+            <div>
+              <p className="jida-section-kicker">Admin · User Management</p>
+              <h2>Manage system users</h2>
+              <p>Create author, reviewer, or editor accounts and manage all registered users.</p>
+            </div>
+          </div>
+
+          <div className="jida-metrics">
+            <article className="jida-metric">
+              <p>Total Users</p>
+              <strong>{users.length}</strong>
+            </article>
+            <article className="jida-metric">
+              <p>Authors</p>
+              <strong>{users.filter((u) => u.role === "AUTHOR").length}</strong>
+            </article>
+            <article className="jida-metric">
+              <p>Reviewers</p>
+              <strong>{users.filter((u) => u.role === "REVIEWER").length}</strong>
+            </article>
+          </div>
+
+          {/* Create user form */}
+          <section className="jida-card">
+            <div className="jida-section-heading">
+              <div>
+                <p className="jida-section-kicker">New Account</p>
+                <h2>Create User</h2>
+              </div>
+            </div>
+
+            <form className="jida-admin-create-form" ref={createRef} onSubmit={handleCreateUser}>
+              {createMsg && (
+                <p className={createMsg.ok ? "jida-badge success" : "jida-badge danger"} style={{ padding: "0.55rem 0.8rem", borderRadius: "8px", display: "block" }}>
+                  {createMsg.text}
+                </p>
+              )}
+
+              <div className="jida-admin-create-grid">
+                <label>
+                  Full Name
+                  <input name="name" type="text" placeholder="e.g. Alice Umutoni" />
+                </label>
+                <label>
+                  Email <span className="jida-required">*</span>
+                  <input name="email" type="email" placeholder="user@example.com" required />
+                </label>
+                <label>
+                  Password <span className="jida-required">*</span>
+                  <input name="password" type="password" placeholder="Minimum 8 characters" minLength={8} required />
+                </label>
+                <label>
+                  Role <span className="jida-required">*</span>
+                  <select name="role" defaultValue="AUTHOR" required>
+                    <option value="AUTHOR">Author</option>
+                    <option value="REVIEWER">Reviewer</option>
+                    <option value="EDITOR">Editor</option>
+                  </select>
+                </label>
+                <label>
+                  Institution
+                  <input name="institution" type="text" placeholder="University or affiliation" />
+                </label>
+              </div>
+
+              <button type="submit" className="jida-btn-primary" disabled={creating}>
+                {creating ? "Creating…" : "Create User"}
+              </button>
+            </form>
+          </section>
+
+          {/* Users table */}
+          <section className="jida-card">
+            <div className="jida-section-heading">
+              <div>
+                <p className="jida-section-kicker">Directory</p>
+                <h2>All Users</h2>
+              </div>
+              <span className="jida-badge">{users.length} accounts</span>
+            </div>
+
+            {usersLoading ? (
+              <p style={{ padding: "1rem" }}>Loading…</p>
+            ) : usersError ? (
+              <p style={{ padding: "1rem", color: "red" }}>{usersError}</p>
+            ) : (
+              <div className="jida-table-wrap">
+                <table className="jida-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Institution</th>
+                      <th>Joined</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id}>
+                        <td data-label="Name">{u.name ?? "—"}</td>
+                        <td data-label="Email">{u.email}</td>
+                        <td data-label="Role">
+                          <span className={ROLE_BADGE[u.role]}>{u.role}</span>
+                        </td>
+                        <td data-label="Institution">{u.institution ?? "—"}</td>
+                        <td data-label="Joined">{u.createdAt?.slice(0, 10) ?? "—"}</td>
+                        <td data-label="Actions">
+                          <button
+                            type="button"
+                            className="jida-btn-danger-sm"
+                            disabled={deleting === u.id}
+                            onClick={() => handleDelete(u.id, u.email)}
+                          >
+                            {deleting === u.id ? "…" : "Remove"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {users.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: "center", padding: "1rem" }}>
+                          No users found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </section>
+      )}
+
+      {activeTab === "author"   && <AuthorWorkspace />}
+      {activeTab === "reviewer" && <ReviewerWorkspace />}
+      {activeTab === "editor"   && <EditorWorkspace />}
+    </>
   );
 }

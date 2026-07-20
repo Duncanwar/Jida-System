@@ -119,7 +119,7 @@ export default function Home() {
               loading="lazy"
               referrerPolicy="strict-origin-when-cross-origin"
               title="JIDA Location"
-            />
+              />
           </div>
         </div>
       </section>

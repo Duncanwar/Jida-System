@@ -33,14 +33,15 @@ async function request<T>(
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
 
-export type Role = "AUTHOR" | "REVIEWER" | "EDITOR";
+export type Role = "AUTHOR" | "REVIEWER" | "EDITOR" | "ADMIN";
+export type UserRole = "AUTHOR" | "REVIEWER" | "EDITOR";
 
 export async function login(email: string, password: string, role: Role) {
-  return request<{ accessToken: string; expiresInMinutes: number }>(
-    "POST",
-    "/api/auth/login",
-    { email, password, role },
-  );
+  return request<{
+    accessToken: string;
+    expiresInMinutes: number;
+    user: { id: string; email: string; role: Role; firstName?: string | null; lastName?: string | null };
+  }>("POST", "/api/auth/login", { email, password, role });
 }
 
 export async function register(data: {
@@ -71,7 +72,45 @@ export async function getMe() {
 }
 
 export async function patchMe(data: { name?: string; institution?: string }) {
-  return request("PATCH", "/api/me", data);
+  // Backend stores firstName / lastName / affiliation — map the friendly fields.
+  const parts = (data.name ?? "").trim().split(/\s+/).filter(Boolean);
+  const [firstName, ...rest] = parts;
+  return request("PATCH", "/api/me", {
+    ...(firstName ? { firstName } : {}),
+    ...(rest.length ? { lastName: rest.join(" ") } : {}),
+    ...(data.institution ? { affiliation: data.institution } : {}),
+  });
+}
+
+// ─── Journal settings (FR-A12) ─────────────────────────────────────────────
+
+export async function getSubmissionSettings() {
+  return request<{ submissionDeadline: string | null; openForSubmissions: boolean }>(
+    "GET",
+    "/api/settings/submission",
+  );
+}
+
+// ─── Authenticated file download helper (FR-A8, FR-R3) ─────────────────────
+
+export async function downloadFile(path: string, filename: string) {
+  const headers: Record<string, string> = {};
+  const t = token();
+  if (t) headers["Authorization"] = `Bearer ${t}`;
+  const res = await fetch(`${BASE}${path}`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || err.message || "Download failed");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ─── Author — Manuscripts ──────────────────────────────────────────────────
@@ -143,12 +182,25 @@ export async function makeDecision(
   return request("POST", `/api/editor/manuscripts/${manuscriptId}/decision`, { decision });
 }
 
+export async function getReviewers() {
+  return request<ReviewerOption[]>("GET", "/api/editor/reviewers");
+}
+
 export async function createIssue(data: { volume: number; issue: number; year: number }) {
-  return request<{ id: string }>("POST", "/api/editor/issues", data);
+  // Backend field is `issueNumber`.
+  return request<{ id: string }>("POST", "/api/editor/issues", {
+    volume: data.volume,
+    issueNumber: data.issue,
+    year: data.year,
+  });
 }
 
 export async function publishToIssue(issueId: string, manuscriptId: string) {
-  return request("POST", `/api/editor/issues/${issueId}/publish`, { manuscriptId });
+  return request<{ id: string; slug: string }>(
+    "POST",
+    `/api/editor/issues/${issueId}/publish`,
+    { manuscriptId },
+  );
 }
 
 export async function setScholarReady(publicationId: string, scholarReady: boolean) {
@@ -206,8 +258,18 @@ export interface ManuscriptSummary {
   id: string;
   title: string;
   status: ManuscriptStatus;
-  submittedAt: string;
+  createdAt?: string;
+  submittedAt?: string;
   submissionDeadline?: string;
+  publication?: { slug: string; publishedAt: string } | null;
+}
+
+export interface ReviewerOption {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  affiliation?: string | null;
 }
 
 export interface ManuscriptDetail extends ManuscriptSummary {
@@ -256,4 +318,33 @@ export interface PublicArticle {
   keywords?: string[];
   issue?: string;
   publishedAt?: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  name?: string;
+  institution?: string;
+  createdAt?: string;
+}
+
+// ─── Admin ─────────────────────────────────────────────────────────────────
+
+export async function adminGetUsers() {
+  return request<AdminUser[]>("GET", "/api/admin/users");
+}
+
+export async function adminCreateUser(data: {
+  email: string;
+  password: string;
+  role: UserRole;
+  name?: string;
+  institution?: string;
+}) {
+  return request<AdminUser>("POST", "/api/admin/users", data);
+}
+
+export async function adminDeleteUser(userId: string) {
+  return request("DELETE", `/api/admin/users/${userId}`);
 }
