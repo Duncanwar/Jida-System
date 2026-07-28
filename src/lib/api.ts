@@ -4,6 +4,31 @@ function token() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
 }
 
+/**
+ * Error thrown for any non-2xx response.
+ *
+ * Carries the backend's machine-readable `code` so callers can branch on the
+ * specific failure (e.g. EMAIL_NOT_VERIFIED) instead of matching on prose.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+interface ApiErrorBody {
+  error?: string;
+  message?: string;
+  code?: string;
+  [key: string]: unknown;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -22,8 +47,17 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || "Request failed");
+    // The API returns `{ error }`; older handlers used `{ message }`. Read both,
+    // otherwise every failure surfaces as the useless "Request failed".
+    const err: ApiErrorBody = await res
+      .json()
+      .catch(() => ({ error: res.statusText }) as ApiErrorBody);
+    throw new ApiError(
+      err.error ?? err.message ?? "Request failed",
+      res.status,
+      err.code,
+      err,
+    );
   }
 
   const text = await res.text();
@@ -34,16 +68,33 @@ async function request<T>(
 // ─── Auth ──────────────────────────────────────────────────────────────────
 
 export type Role = "AUTHOR" | "REVIEWER" | "EDITOR" | "ADMIN";
-export type UserRole = "AUTHOR" | "REVIEWER" | "EDITOR";
+export type UserRole = "AUTHOR" | "REVIEWER" | "EDITOR" | "ADMIN" ;
 
-export async function login(email: string, password: string, role: Role) {
-  return request<{
-    accessToken: string;
-    expiresInMinutes: number;
-    user: { id: string; email: string; role: Role; firstName?: string | null; lastName?: string | null };
-  }>("POST", "/api/auth/login", { email, password, role });
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: Role;
+  firstName?: string | null;
+  lastName?: string | null;
+  emailVerified?: boolean;
+  avatarUrl?: string | null;
 }
 
+export interface AuthSession {
+  accessToken: string;
+  expiresInMinutes: number;
+  user: AuthUser;
+  message?: string;
+}
+
+export async function login(email: string, password: string, role: Role) {
+  return request<AuthSession>("POST", "/api/auth/login", { email, password, role });
+}
+
+/**
+ * Registration no longer returns an access token — the account is inactive
+ * until the emailed verification link is followed (FR-AUTH-1).
+ */
 export async function register(data: {
   email: string;
   password: string;
@@ -51,15 +102,57 @@ export async function register(data: {
   name?: string;
   institution?: string;
 }) {
-  return request<{ accessToken: string }>("POST", "/api/auth/register", data);
+  return request<{
+    user: AuthUser;
+    requiresEmailVerification: boolean;
+    message: string;
+  }>("POST", "/api/auth/register", data);
+}
+
+// ─── Email verification (FR-AUTH-1) ────────────────────────────────────────
+
+/** Exchanges the token from the emailed link for an active session. */
+export async function verifyEmail(verificationToken: string) {
+  return request<AuthSession & { alreadyVerified: boolean }>("POST", "/api/auth/verify-email", {
+    token: verificationToken,
+  });
+}
+
+export async function resendVerification(email: string) {
+  return request<{ message: string }>("POST", "/api/auth/resend-verification", { email });
+}
+
+export async function getVerificationStatus(email: string) {
+  return request<{ emailVerified: boolean }>(
+    "GET",
+    `/api/auth/verification-status?email=${encodeURIComponent(email)}`,
+  );
+}
+
+// ─── Google sign-in (FR-AUTH-2) ────────────────────────────────────────────
+
+export async function getGoogleConfig() {
+  return request<{ enabled: boolean; clientId: string | null }>("GET", "/api/auth/google/config");
+}
+
+/** Exchanges a Google Identity Services credential for a JIDA session. */
+export async function googleSignIn(credential: string, role?: Role, institution?: string) {
+  return request<AuthSession & { created: boolean }>("POST", "/api/auth/google", {
+    credential,
+    ...(role && role !== "ADMIN" ? { role } : {}),
+    ...(institution ? { institution } : {}),
+  });
 }
 
 export async function forgotPassword(email: string) {
-  return request("POST", "/api/auth/forgot-password", { email });
+  return request<{ message: string }>("POST", "/api/auth/forgot-password", { email });
 }
 
 export async function resetPassword(token_: string, newPassword: string) {
-  return request("POST", "/api/auth/reset-password", { token: token_, newPassword });
+  return request<{ message: string }>("POST", "/api/auth/reset-password", {
+    token: token_,
+    newPassword,
+  });
 }
 
 // ─── Profile ───────────────────────────────────────────────────────────────

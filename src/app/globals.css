@@ -2231,3 +2231,179 @@ button.jida-nav-btn:hover {
   from { opacity: 0; transform: translateY(20px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
+
+/* ─── Auth: email verification + Google sign-in (FR-AUTH-1, FR-AUTH-2) ───── */
+
+.jida-auth-notice {
+  color: #14532d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  margin-bottom: 0.8rem;
+  font-size: 0.9rem;
+}
+
+.jida-auth-hint {
+  color: #5a7194;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.6rem 0 0.9rem;
+  text-align: center;
+}
+
+.jida-auth-forgot-link {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.jida-auth-forgot-link a {
+  color: #2e5fa4;
+  text-decoration: none;
+}
+
+.jida-auth-forgot-link a:hover {
+  text-decoration: underline;
+}
+
+/* Inline "resend" affordance inside an error box — a button that reads as a link. */
+button.jida-link-btn {
+  width: auto;
+  height: auto;
+  min-height: unset;
+  margin-top: 0.45rem;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: #2e5fa4;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button.jida-link-btn:hover {
+  background: none;
+  color: #10223d;
+}
+
+button.jida-link-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Google sign-in ─────────────────────────────────────────────────────── */
+
+.jida-google-auth {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.jida-auth-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.75rem;
+  color: #8fa3bf;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.jida-auth-divider::before,
+.jida-auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #dce4ee;
+}
+
+.jida-google-btn-slot {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.jida-google-btn-slot[aria-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.jida-google-hint {
+  color: #5a7194;
+  font-size: 0.82rem;
+}
+
+/* ─── Verification pages (/verify-email, /check-email) ───────────────────── */
+
+.jida-verify-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: #eef3f9;
+}
+
+.jida-verify-card {
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border: 1px solid #dce4ee;
+  border-radius: 16px;
+  padding: 2rem 1.9rem 2.2rem;
+  box-shadow: 0 10px 40px rgba(16, 34, 61, 0.1);
+  text-align: center;
+  animation: jida-slide-up 0.4s ease;
+}
+
+.jida-verify-card .jida-auth-logo {
+  justify-content: center;
+  margin-bottom: 1.4rem;
+}
+
+.jida-verify-card h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.7rem;
+  color: #10223d;
+}
+
+.jida-verify-status {
+  color: #5a7194;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.jida-verify-success {
+  color: #14532d;
+}
+
+.jida-verify-error {
+  color: #8a1f2a;
+}
+
+.jida-verify-tips {
+  text-align: left;
+  margin: 0 0 1.4rem;
+  padding-left: 1.15rem;
+  color: #5a7194;
+  font-size: 0.87rem;
+  line-height: 1.75;
+}
+
+.jida-verify-card .jida-login-form {
+  margin-top: 0.5rem;
+  text-align: left;
+}
+
+.jida-verify-card a.jida-login-btn {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}

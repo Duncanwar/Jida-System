@@ -160,8 +160,8 @@ export function AppHeader() {
   const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem("token")); 
     setUserRole(localStorage.getItem("role"));
+    setIsLoggedIn(!!localStorage.getItem("token"));
   }, [pathname]);
 
   function handleLogout() {
@@ -194,6 +194,7 @@ export function AppHeader() {
                 <Link href="/login" className="jida-nav-btn">Sign In</Link>
               </>
             )}
+            
             {isPublicPage && isLoggedIn && (
               <>
                 <Link
@@ -1123,6 +1124,7 @@ const ROLE_BADGE: Record<UserRole, string> = {
   AUTHOR:   "jida-badge info",
   REVIEWER: "jida-badge success",
   EDITOR:   "jida-badge warning",
+  ADMIN:    "jida-badge danger",
 };
 
 export function AdminWorkspace() {

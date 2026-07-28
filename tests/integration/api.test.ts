@@ -4,7 +4,14 @@
  * and error propagation exactly as the backend contract expects.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { login, register } from "@/lib/api";
+import {
+  getVerificationStatus,
+  googleSignIn,
+  login,
+  register,
+  resendVerification,
+  verifyEmail,
+} from "@/lib/api";
 
 const fetchMock = vi.fn();
 
@@ -75,5 +82,84 @@ describe("api client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/auth\/register$/);
     expect(init.method).toBe("POST");
+  });
+
+  // The backend replies with `{ error }`; only reading `message` turned every
+  // failure into the useless "Request failed".
+  it("reads the backend's `error` field, not just `message`", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: "Email already registered" }, false, 409));
+    await expect(login("a@b.c", "wrong", "AUTHOR")).rejects.toThrow("Email already registered");
+  });
+
+  it("exposes the machine-readable error code and status on ApiError", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ error: "Verify your email", code: "EMAIL_NOT_VERIFIED" }, false, 403),
+    );
+
+    await expect(login("a@b.c", "pw12345678", "AUTHOR")).rejects.toMatchObject({
+      name: "ApiError",
+      status: 403,
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  });
+});
+
+describe("email verification client (FR-AUTH-1)", () => {
+  it("POSTs the token to /api/auth/verify-email", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ accessToken: "tok", user: { id: "u1", role: "AUTHOR" } }),
+    );
+
+    await verifyEmail("raw-token");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/api\/auth\/verify-email$/);
+    expect(JSON.parse(init.body)).toEqual({ token: "raw-token" });
+  });
+
+  it("POSTs the address to /api/auth/resend-verification", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ message: "sent" }));
+
+    await resendVerification("a@b.c");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/api\/auth\/resend-verification$/);
+    expect(JSON.parse(init.body)).toEqual({ email: "a@b.c" });
+  });
+
+  it("url-encodes the address when checking verification status", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ emailVerified: false }));
+
+    await getVerificationStatus("a+tag@b.c");
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("email=a%2Btag%40b.c");
+  });
+});
+
+describe("google sign-in client (FR-AUTH-2)", () => {
+  it("forwards the credential and the chosen role", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ accessToken: "tok", user: { id: "g1", role: "REVIEWER" }, created: true }),
+    );
+
+    await googleSignIn("google-id-token", "REVIEWER", "AUCA");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/api\/auth\/google$/);
+    expect(JSON.parse(init.body)).toEqual({
+      credential: "google-id-token",
+      role: "REVIEWER",
+      institution: "AUCA",
+    });
+  });
+
+  // Admins are provisioned by the seed script, never self-served through Google.
+  it("never requests the ADMIN role", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ accessToken: "tok", user: { id: "g1" } }));
+
+    await googleSignIn("google-id-token", "ADMIN");
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).role).toBeUndefined();
   });
 });
