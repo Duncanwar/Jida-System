@@ -2407,3 +2407,98 @@ button.jida-link-btn:disabled {
   text-decoration: none;
   text-align: center;
 }
+
+/* Development-only notice explaining why the Google button is absent. */
+.jida-google-setup-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border: 1px dashed #c8b273;
+  border-radius: 10px;
+  background: #fffaf0;
+  color: #7a5c14;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.jida-google-setup-hint strong {
+  font-size: 0.82rem;
+}
+
+/* ─── Auth shell + registration screen ──────────────────────────────────── */
+
+/* The (auth) layout wrapper. Intentionally inert: each auth screen paints its
+   own full-bleed background. It previously forced bg-gray-100/dark:bg-gray-900,
+   which rendered near-black in dark mode behind the sign-up form. */
+.jida-auth-shell {
+  min-height: 100vh;
+}
+
+/* Registration has roughly twice the fields of login, so the form column has to
+   scroll on short viewports instead of clipping the submit button. */
+.jida-auth-screen .jida-auth-form-side {
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+.jida-auth-screen .jida-auth-logo {
+  margin-bottom: 2.25rem;
+}
+
+/* Password field with a show/hide affordance. */
+.jida-password-wrap {
+  position: relative;
+  display: block;
+}
+
+.jida-password-wrap input {
+  padding-right: 2.9rem;
+}
+
+/* Scoped reset: the global `button` rule is a full-width white pill, which
+   would otherwise cover the input it sits on top of. */
+button.jida-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  min-height: unset;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #5a7194;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+button.jida-password-toggle:hover {
+  background: #eef3f9;
+  color: #10223d;
+}
+
+/* Keep the sign-up column readable on narrow screens: drop the photo panel and
+   let the form use the full width, matching how login already behaves. */
+@media (max-width: 900px) {
+  .jida-auth-screen {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-auth-screen .jida-auth-photo-side {
+    display: none;
+  }
+
+  .jida-auth-screen .jida-auth-form-side {
+    padding: 2rem 1.5rem;
+    border-right: none;
+  }
+}

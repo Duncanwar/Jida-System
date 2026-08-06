@@ -94,6 +94,8 @@ export function GoogleSignInButton({
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable" | "authenticating">(
     "loading",
   );
+  /** Why the button is unavailable. Shown only in development. */
+  const [reason, setReason] = useState<string | null>(null);
 
   // Keep the latest role/handlers in a ref: GIS captures the callback once at
   // initialize() time, so reading state directly would freeze the first value.
@@ -106,13 +108,25 @@ export function GoogleSignInButton({
       .then((config) => {
         if (cancelled) return;
         if (!config.enabled || !config.clientId) {
+          // Configured to be off. In production this is a deliberate choice, so
+          // the button simply disappears. In development it is nearly always an
+          // unset env var, and a silently missing button is a poor clue.
           setStatus("unavailable");
+          setReason(
+            "Google sign-in is off because GOOGLE_CLIENT_ID is not set in the backend .env.",
+          );
           return;
         }
         setClientId(config.clientId);
       })
-      .catch(() => {
-        if (!cancelled) setStatus("unavailable");
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setStatus("unavailable");
+        setReason(
+          `Could not reach the API to check Google sign-in (${
+            err instanceof Error ? err.message : "unknown error"
+          }). Is the backend running, and is CORS_ORIGIN set to this origin?`,
+        );
       });
     return () => {
       cancelled = true;
@@ -175,8 +189,23 @@ export function GoogleSignInButton({
     };
   }, [clientId, handleCredential, text]);
 
-  // Nothing to show if Google is not configured — do not leave a dead button.
-  if (status === "unavailable") return null;
+  if (status === "unavailable") {
+    // Production: stay invisible — a dead button is worse than no button.
+    // Development: say why, so a missing button is a diagnosis and not a mystery.
+    if (process.env.NODE_ENV === "production" || !reason) return null;
+    return (
+      <div className="jida-google-auth">
+        <div className="jida-auth-divider" role="separator">
+          <span>or</span>
+        </div>
+        <p className="jida-google-setup-hint">
+          <strong>Google sign-in unavailable (development notice)</strong>
+          <span>{reason}</span>
+          <span>This notice is hidden in production builds.</span>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="jida-google-auth">

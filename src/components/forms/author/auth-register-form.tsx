@@ -1,14 +1,21 @@
 "use client";
 
-import { Mail, User, Eye, EyeOff } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, register, resendVerification, type Role } from "@/lib/api";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { dashboardFor, persistSession } from "@/lib/session";
 
+/**
+ * Registration screen.
+ *
+ * Shares the light two-column AUCA layout with the login screen: form on the
+ * left, campus photo on the right. It previously used white-on-dark styling,
+ * which made the two auth screens look like different products.
+ */
 export function AuthRegisterForm() {
-  const sectionRef = React.useRef<HTMLElement>(null);
   const router = useRouter();
   const [role, setRole] = useState<Role>("AUTHOR");
   const [institution, setInstitution] = useState("");
@@ -18,17 +25,6 @@ export function AuthRegisterForm() {
   const [notice, setNotice] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (el) {
-      el.style.opacity = "0";
-      setTimeout(() => {
-        el.style.transition = "opacity 1s ease-in-out";
-        el.style.opacity = "1";
-      }, 500);
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,100 +83,150 @@ export function AuthRegisterForm() {
   };
 
   return (
-    <div>
-      <section ref={sectionRef}>
-        <form id="author-register-form" onSubmit={handleSubmit}>
-          <h1>Registration</h1>
-
-          {error && (
-            <div style={{ color: "red", marginBottom: "0.5rem" }} role="alert">
-              <p>{error}</p>
-              {unverifiedEmail ? (
-                <button type="button" className="jida-link-btn" onClick={() => void handleResend()}>
-                  Resend verification email
-                </button>
-              ) : null}
-            </div>
-          )}
-
-          {notice && (
-            <p style={{ color: "green", marginBottom: "0.5rem" }} role="status">
-              {notice}
-            </p>
-          )}
-
-          <div className="inputbox">
-            <User className="input-icon" />
-            <label>Role</label>
-            <select
-              name="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              style={{ width: "100%" }}
-            >
-              <option value="AUTHOR">Author</option>
-              <option value="REVIEWER">Reviewer</option>
-              <option value="EDITOR">Editor</option>
-            </select>
+    <main className="jida-auth-screen">
+      <section className="jida-auth-form-side" aria-labelledby="register-title">
+        <div className="jida-auth-logo">
+          <span className="jida-auth-logo-badge">J</span>
+          <div>
+            <strong>JIDA System</strong>
+            <small>Journal of Inter-Discourse Academia</small>
           </div>
+        </div>
 
-          <div className="inputbox">
-            <User className="input-icon" />
-            <label>Full Name</label>
-            <input type="text" name="fullName" required />
-          </div>
-
-          <div className="inputbox">
-            <Mail className="input-icon" />
-            <label>Email</label>
-            <input type="email" name="email" required />
-          </div>
-
-          <div className="inputbox">
-            <div className="input-icon" onClick={() => setShowPassword((p) => !p)}>
-              {showPassword ? <EyeOff /> : <Eye />}
-            </div>
-            <label>Password</label>
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              minLength={8}
-              required
-            />
-          </div>
-
-          <div className="inputbox">
-            <div className="input-icon" onClick={() => setShowConfirmPassword((p) => !p)}>
-              {showConfirmPassword ? <EyeOff /> : <Eye />}
-            </div>
-            <label>Confirm Password</label>
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              minLength={8}
-              required
-            />
-          </div>
-
-          <div className="inputbox">
-            <User className="input-icon" />
-            <label>Institution</label>
-            <input
-              type="text"
-              name="institution"
-              value={institution}
-              onChange={(e) => setInstitution(e.target.value)}
-            />
-          </div>
-
-          <p className="jida-auth-hint">
-            We will email you a link to verify this address. Your account stays inactive until you
-            confirm it.
+        <div className="jida-auth-form-body">
+          <h1 id="register-title">Create your account</h1>
+          <p className="jida-auth-subtitle">
+            Join JIDA to submit, review, or edit scholarly work.
           </p>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Creating account…" : "Register"}
-          </button>
+          <form className="jida-login-form" onSubmit={handleSubmit}>
+            {error ? (
+              <div className="jida-auth-error" role="alert">
+                <p>{error}</p>
+                {unverifiedEmail ? (
+                  <button
+                    type="button"
+                    className="jida-link-btn"
+                    onClick={() => void handleResend()}
+                  >
+                    Resend verification email
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            {notice ? (
+              <p className="jida-auth-notice" role="status">
+                {notice}
+              </p>
+            ) : null}
+
+            <div className="jida-login-field">
+              <label htmlFor="role">Role</label>
+              <select
+                id="role"
+                name="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+              >
+                <option value="AUTHOR">Author</option>
+                <option value="REVIEWER">Reviewer</option>
+                <option value="EDITOR">Editor</option>
+              </select>
+            </div>
+
+            <div className="jida-login-field">
+              <label htmlFor="fullName">Full name</label>
+              <input
+                id="fullName"
+                type="text"
+                name="fullName"
+                placeholder="Ada Lovelace"
+                autoComplete="name"
+                required
+              />
+            </div>
+
+            <div className="jida-login-field">
+              <label htmlFor="email">Email address</label>
+              <input
+                id="email"
+                type="email"
+                name="email"
+                placeholder="name@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className="jida-login-field">
+              <label htmlFor="password">Password</label>
+              <div className="jida-password-wrap">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  className="jida-password-toggle"
+                  onClick={() => setShowPassword((p) => !p)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="jida-login-field">
+              <label htmlFor="confirmPassword">Confirm password</label>
+              <div className="jida-password-wrap">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="Re-enter your password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  className="jida-password-toggle"
+                  onClick={() => setShowConfirmPassword((p) => !p)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="jida-login-field">
+              <label htmlFor="institution">Institution</label>
+              <input
+                id="institution"
+                type="text"
+                name="institution"
+                placeholder="Adventist University of Central Africa"
+                autoComplete="organization"
+                value={institution}
+                onChange={(e) => setInstitution(e.target.value)}
+              />
+            </div>
+
+            <p className="jida-auth-hint">
+              We&apos;ll email you a link to verify this address. Your account stays inactive
+              until you confirm it.
+            </p>
+
+            <button type="submit" className="jida-login-btn" disabled={loading}>
+              {loading ? "Creating account…" : "Create account"}
+            </button>
+          </form>
 
           {/* Google accounts skip verification — Google has already done it. */}
           <GoogleSignInButton
@@ -194,16 +240,13 @@ export function AuthRegisterForm() {
             onError={(message) => setError(message)}
           />
 
-          <div className="register">
-            <p>
-              Already have an account?{" "}
-              <a onClick={() => router.push("/login")} style={{ cursor: "pointer" }}>
-                Login here
-              </a>
-            </p>
-          </div>
-        </form>
+          <p className="jida-auth-signup-link">
+            Already have an account? <Link href="/login">Login here</Link>
+          </p>
+        </div>
       </section>
-    </div>
+
+      <div className="jida-auth-photo-side" aria-hidden="true" />
+    </main>
   );
 }
