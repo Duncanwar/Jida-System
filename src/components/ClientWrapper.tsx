@@ -9,7 +9,7 @@ export default function ClientWrapper({
 }) {
   const pathname = usePathname();
   useEffect(() => {
-    if (pathname === "/login" || pathname === "/register") {
+    if (pathname === "/login" || pathname === "/signup") {
       document.body.classList.add("auth-page");
     } else {
       document.body.classList.remove("auth-page");

@@ -122,7 +122,7 @@ export function CheckEmailView() {
         </button>
 
         <p className="jida-auth-signup-link">
-          Wrong address? <Link href="/register">Register again</Link> · <Link href="/login">Back to login</Link>
+          Wrong address? <Link href="/signup">Sign up again</Link> · <Link href="/login">Back to login</Link>
         </p>
       </section>
     </main>

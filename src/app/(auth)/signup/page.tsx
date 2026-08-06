@@ -2,7 +2,7 @@
 import { AuthRegisterForm } from "@/components/forms/author/auth-register-form";
 import { useEffect } from "react";
 
-export default function RegisterRoute() {
+export default function SignupRoute() {
   useEffect(() => {
     // Add auth-page class to body when component mounts
     document.body.classList.add('auth-page');

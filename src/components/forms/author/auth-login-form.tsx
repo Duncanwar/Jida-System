@@ -70,8 +70,8 @@ export function AuthLoginForm() {
         <div className="register">
           <p>
             Don&apos;t have an account?{" "}
-            <a onClick={() => router.push("/register")} style={{ cursor: "pointer" }}>
-              Register here
+            <a onClick={() => router.push("/signup")} style={{ cursor: "pointer" }}>
+              Sign up here
             </a>
           </p>
         </div>

@@ -190,7 +190,7 @@ export function AppHeader() {
           <nav className="jida-header-nav">
             {isPublicPage && !isLoggedIn && (
               <>
-                <Link href="/register" className="jida-nav-ghost">Create Account</Link>
+                <Link href="/signup" className="jida-nav-ghost">Create Account</Link>
                 <Link href="/login" className="jida-nav-btn">Sign In</Link>
               </>
             )}

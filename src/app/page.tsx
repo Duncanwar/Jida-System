@@ -58,7 +58,7 @@ export default function Home() {
           JIDA is committed to advancing rigorous, peer-reviewed academic discourse across
           disciplines — connecting authors, reviewers, and editors in a structured digital workflow.
         </p>
-        <Link href="/register">Apply as Author</Link>
+        <Link href="/signup">Apply as Author</Link>
       </div>
 
 

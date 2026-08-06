@@ -168,7 +168,7 @@ export function UnifiedLoginForm() {
           </p>
 
           <p className="jida-auth-signup-link">
-            Don&apos;t have an account? <Link href="/register">Sign Up</Link>
+            Don&apos;t have an account? <Link href="/signup">Sign Up</Link>
           </p>
         </div>
       </section>
