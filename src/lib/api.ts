@@ -52,6 +52,18 @@ async function request<T>(
     const err: ApiErrorBody = await res
       .json()
       .catch(() => ({ error: res.statusText }) as ApiErrorBody);
+
+    // A 401 on a request that actually carried a bearer token means that
+    // token was rejected (invalid/expired) — not a login-form bad-password
+    // 401, which never sends a token. Bounce to /login instead of leaving
+    // the user stuck on a page whose data calls are silently failing.
+    if (res.status === 401 && t && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("email");
+      window.location.assign("/login");
+    }
+
     throw new ApiError(
       err.error ?? err.message ?? "Request failed",
       res.status,
@@ -241,9 +253,15 @@ export async function submitReview(
     commentsToAuthor: string;
     commentsToEditor: string;
     recommendation: ReviewRecommendation;
+    file?: File | null;
   },
 ) {
-  return request("POST", `/api/reviewer/assignments/${assignmentId}/review`, data);
+  const form = new FormData();
+  form.set("commentsToAuthor", data.commentsToAuthor);
+  form.set("commentsToEditor", data.commentsToEditor);
+  form.set("recommendation", data.recommendation);
+  if (data.file) form.set("file", data.file);
+  return request("POST", `/api/reviewer/assignments/${assignmentId}/review`, form, true);
 }
 
 export async function getReviewHistory() {
@@ -277,6 +295,14 @@ export async function makeDecision(
 
 export async function getReviewers() {
   return request<ReviewerOption[]>("GET", "/api/editor/reviewers");
+}
+
+export async function unassignReviewer(manuscriptId: string, reviewerId: string) {
+  return request("DELETE", `/api/editor/manuscripts/${manuscriptId}/assignments/${reviewerId}`);
+}
+
+export async function uploadEditedFile(manuscriptId: string, form: FormData) {
+  return request("POST", `/api/editor/manuscripts/${manuscriptId}/edited-file`, form, true);
 }
 
 export async function createIssue(data: { volume: number; issue: number; year: number }) {
@@ -347,6 +373,16 @@ export type ReviewRecommendation =
   | "MAJOR_REVISION"
   | "REJECT";
 
+export interface ManuscriptFileInfo {
+  id: string;
+  originalName: string;
+  source: "AUTHOR" | "EDITOR";
+  remarks?: string | null;
+  versionLabel: number;
+  isLatest: boolean;
+  createdAt: string;
+}
+
 export interface ManuscriptSummary {
   id: string;
   title: string;
@@ -355,6 +391,7 @@ export interface ManuscriptSummary {
   submittedAt?: string;
   submissionDeadline?: string;
   publication?: { slug: string; publishedAt: string } | null;
+  files?: ManuscriptFileInfo[];
 }
 
 export interface ReviewerOption {
@@ -370,7 +407,6 @@ export interface ManuscriptDetail extends ManuscriptSummary {
   keywords: string[];
   authorName?: string;
   issue?: string;
-  files?: { id: string; name: string }[];
   assignments?: Assignment[];
 }
 
@@ -378,11 +414,16 @@ export interface Assignment {
   id: string;
   manuscriptId: string;
   manuscriptTitle?: string;
+  abstract?: string;
+  keywords?: string[];
   deadline: string;
   progress: ReviewProgress;
   recommendation?: ReviewRecommendation;
   commentsToAuthor?: string;
   commentsToEditor?: string;
+  /** Set only in editor-side responses — id of the reviewer's `Review` row, for downloading their attachment. */
+  reviewId?: string;
+  hasAttachment?: boolean;
   reviewer?: { id: string; name?: string; email: string };
 }
 

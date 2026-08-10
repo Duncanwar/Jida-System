@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Settings, X, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   getManuscripts,
   submitManuscript,
   submitRevision,
+  getMe,
   patchMe,
   getSubmissionSettings,
   downloadFile,
@@ -19,6 +20,8 @@ import {
   submitReview,
   getEditorSubmissions,
   assignReviewers,
+  unassignReviewer,
+  uploadEditedFile,
   makeDecision,
   createIssue,
   publishToIssue,
@@ -59,7 +62,9 @@ function badgeClass(value: string) {
 function ProfileModal({ onClose }: { onClose: () => void }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{ email: string; name: string; institution: string } | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -68,6 +73,19 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await getMe();
+        setProfile({ email: me.email, name: me.name ?? "", institution: me.institution ?? "" });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,14 +121,16 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <p className="jida-section-kicker">Account</p>
-            <h3>Update Profile</h3>
+            <h3>Your Profile</h3>
           </div>
           <button className="jida-modal-close" onClick={onClose} aria-label="Close">
             <X size={16} />
           </button>
         </div>
 
-        {saved ? (
+        {loading ? (
+          <p style={{ padding: "1rem" }}>Loading…</p>
+        ) : saved ? (
           <div className="jida-modal-saved">
             <span>✓</span>
             <p>Profile updated successfully</p>
@@ -120,19 +140,15 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
             {error && <p className="jida-modal-error">{error}</p>}
             <label>
               Full Name
-              <input type="text" name="name" placeholder="Your full name" />
+              <input type="text" name="name" placeholder="Your full name" defaultValue={profile?.name} />
             </label>
             <label>
               Email
-              <input type="email" name="email" placeholder="email@example.com" />
+              <input type="email" value={profile?.email ?? ""} disabled readOnly />
             </label>
             <label>
               Institution
-              <input type="text" name="institution" placeholder="Institution or affiliation" />
-            </label>
-            <label>
-              Profile Picture
-              <input type="file" name="profilePic" accept="image/*" />
+              <input type="text" name="institution" placeholder="Institution or affiliation" defaultValue={profile?.institution} />
             </label>
             <div className="jida-modal-actions">
               <button type="submit" className="jida-btn-primary" disabled={saving}>
@@ -446,16 +462,42 @@ export function AuthorWorkspace() {
                   <th>Title</th>
                   <th>Status</th>
                   <th>Submitted</th>
+                  <th>Editor&apos;s Revision</th>
                   <th>Published Article</th>
                 </tr>
               </thead>
               <tbody>
-                {manuscripts.map((item) => (
+                {manuscripts.map((item) => {
+                  const latestFile = item.files?.[0];
+                  const editorFile = latestFile?.source === "EDITOR" ? latestFile : undefined;
+                  return (
                   <tr key={item.id}>
                     <td data-label="ID"><code style={{ fontSize: "0.75rem" }}>{item.id}</code></td>
                     <td data-label="Title">{item.title}</td>
                     <td data-label="Status"><span className={badgeClass(item.status)}>{statusLabel(item.status)}</span></td>
                     <td data-label="Submitted">{(item.createdAt ?? item.submittedAt)?.slice(0, 10) ?? "—"}</td>
+                    <td data-label="Editor's Revision">
+                      {editorFile ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                          <button
+                            type="button"
+                            className="jida-badge info"
+                            style={{ cursor: "pointer", border: "none", alignSelf: "flex-start" }}
+                            onClick={() =>
+                              downloadFile(
+                                `/api/manuscripts/${item.id}/files/${editorFile.id}/download`,
+                                editorFile.originalName,
+                              ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                            }
+                          >
+                            Download
+                          </button>
+                          {editorFile.remarks && <span style={{ fontSize: "0.75rem" }}>{editorFile.remarks}</span>}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td data-label="Published Article">
                       {item.publication ? (
                         <button
@@ -476,9 +518,10 @@ export function AuthorWorkspace() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {manuscripts.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -499,6 +542,15 @@ export function ReviewerWorkspace() {
   const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [reviewMsg, setReviewMsg] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [presetAssignmentId, setPresetAssignmentId] = useState<string>("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  function openPanel(panel: string, assignmentId: string) {
+    setPresetAssignmentId(assignmentId);
+    setActivePanel(panel);
+  }
+
+  const activeAssignment = assignments.find((a) => a.id === presetAssignmentId);
 
   useEffect(() => {
     (async () => {
@@ -520,7 +572,7 @@ export function ReviewerWorkspace() {
     const fd = new FormData(e.currentTarget);
     const id = String(fd.get("assignmentId") ?? "").trim();
     const progress = String(fd.get("progress") ?? "") as ReviewProgress;
-    if (!id) { setProgressMsg("Enter an assignment ID"); return; }
+    if (!id) { setProgressMsg("Select an assignment from the queue below"); return; }
     try {
       await updateReviewProgress(id, progress);
       setProgressMsg("Progress updated.");
@@ -535,12 +587,14 @@ export function ReviewerWorkspace() {
     setReviewMsg(null);
     const fd = new FormData(e.currentTarget);
     const id = String(fd.get("assignmentId") ?? "").trim();
-    if (!id) { setReviewMsg("Enter an assignment ID"); return; }
+    if (!id) { setReviewMsg("Select an assignment from the queue below"); return; }
+    const file = fd.get("file");
     try {
       await submitReview(id, {
         commentsToAuthor: String(fd.get("commentsToAuthor") ?? ""),
         commentsToEditor: String(fd.get("commentsToEditor") ?? ""),
         recommendation: String(fd.get("recommendation") ?? "") as ReviewRecommendation,
+        file: file instanceof File && file.size > 0 ? file : null,
       });
       setReviewMsg("Review submitted successfully.");
       const [a, h] = await Promise.all([getAssignments(), getReviewHistory()]);
@@ -575,7 +629,7 @@ export function ReviewerWorkspace() {
 
       {activePanel === null && (
         <div className="jida-action-panels">
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("review")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("review", assignments[0]?.id ?? "")}>
             <span className="jida-panel-num">01</span>
             <div className="jida-panel-info">
               <strong>Submit Review Evaluation</strong>
@@ -583,7 +637,7 @@ export function ReviewerWorkspace() {
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("progress")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("progress", assignments[0]?.id ?? "")}>
             <span className="jida-panel-num">02</span>
             <div className="jida-panel-info">
               <strong>Update Review Progress</strong>
@@ -597,13 +651,13 @@ export function ReviewerWorkspace() {
       {activePanel === "review" && (
         <div className="jida-form-panel">
           <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setReviewMsg(null); }}>← Back to actions</button>
-          <form className="jida-form" onSubmit={handleReview}>
+          <form className="jida-form" onSubmit={handleReview} encType="multipart/form-data">
             <div className="jida-form-header">
               <span>01</span>
-              <div><h3>Submit Review Evaluation</h3><p>Provide structured feedback for the manuscript.</p></div>
+              <div><h3>Submit Review Evaluation</h3><p>{activeAssignment?.manuscriptTitle ?? "Select a manuscript from the queue below"}</p></div>
             </div>
             {reviewMsg && <p>{reviewMsg}</p>}
-            <label>Assignment ID<input name="assignmentId" placeholder="Paste ID from queue below" required /></label>
+            <input type="hidden" name="assignmentId" value={presetAssignmentId} />
             <label>Comments to Author<textarea name="commentsToAuthor" rows={3} placeholder="Feedback for the author" required /></label>
             <label>Comments to Editor<textarea name="commentsToEditor" rows={3} placeholder="Notes for the editor" required /></label>
             <label>
@@ -616,7 +670,8 @@ export function ReviewerWorkspace() {
                 <option value="REJECT">Reject</option>
               </select>
             </label>
-            <button type="submit" className="jida-btn-primary">Submit Review</button>
+            <label>Annotated file (optional)<input type="file" name="file" accept=".pdf,.docx" /></label>
+            <button type="submit" className="jida-btn-primary" disabled={!presetAssignmentId}>Submit Review</button>
           </form>
         </div>
       )}
@@ -627,10 +682,10 @@ export function ReviewerWorkspace() {
           <form className="jida-form" onSubmit={handleProgress}>
             <div className="jida-form-header">
               <span>02</span>
-              <div><h3>Update Review Progress</h3><p>Track your progress on an assigned manuscript.</p></div>
+              <div><h3>Update Review Progress</h3><p>{activeAssignment?.manuscriptTitle ?? "Select a manuscript from the queue below"}</p></div>
             </div>
             {progressMsg && <p>{progressMsg}</p>}
-            <label>Assignment ID<input name="assignmentId" placeholder="Paste ID from queue below" required /></label>
+            <input type="hidden" name="assignmentId" value={presetAssignmentId} />
             <label>
               Progress
               <select name="progress" defaultValue="">
@@ -641,7 +696,7 @@ export function ReviewerWorkspace() {
                 <option value="FINISHED_REVIEW">Finished Review</option>
               </select>
             </label>
-            <button type="submit" className="jida-btn-primary">Update Progress</button>
+            <button type="submit" className="jida-btn-primary" disabled={!presetAssignmentId}>Update Progress</button>
           </form>
         </div>
       )}
@@ -655,43 +710,67 @@ export function ReviewerWorkspace() {
           <table className="jida-table">
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Manuscript</th>
                 <th>Deadline</th>
                 <th>Progress</th>
                 <th>Recommendation</th>
                 <th>File</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {assignments.map((a) => (
-                <tr key={a.id}>
-                  <td data-label="ID"><code style={{ fontSize: "0.75rem" }}>{a.id}</code></td>
-                  <td data-label="Manuscript"><strong>{a.manuscriptId}</strong><span>{a.manuscriptTitle}</span></td>
-                  <td data-label="Deadline">{a.deadline?.slice(0, 10)}</td>
-                  <td data-label="Progress"><span className={badgeClass(a.progress)}>{statusLabel(a.progress)}</span></td>
-                  <td data-label="Recommendation">
-                    <span className={badgeClass(a.recommendation ?? "pending")}>
-                      {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
-                    </span>
-                  </td>
-                  <td data-label="File">
-                    {/* FR-R3 — download assigned manuscript */}
-                    <button
-                      type="button"
-                      className="jida-badge info"
-                      style={{ cursor: "pointer", border: "none" }}
-                      onClick={() =>
-                        downloadFile(
-                          `/api/reviewer/assignments/${a.id}/download`,
-                          `${a.manuscriptTitle ?? a.manuscriptId ?? "manuscript"}.pdf`,
-                        ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
-                      }
-                    >
-                      Download
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={a.id}>
+                  <tr>
+                    <td data-label="Manuscript">
+                      <button
+                        type="button"
+                        className="jida-btn-secondary"
+                        style={{ padding: 0, border: "none", background: "none", cursor: "pointer", textAlign: "left" }}
+                        onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                      >
+                        <strong>{a.manuscriptTitle ?? "Untitled manuscript"}</strong>
+                      </button>
+                    </td>
+                    <td data-label="Deadline">{a.deadline?.slice(0, 10)}</td>
+                    <td data-label="Progress"><span className={badgeClass(a.progress)}>{statusLabel(a.progress)}</span></td>
+                    <td data-label="Recommendation">
+                      <span className={badgeClass(a.recommendation ?? "pending")}>
+                        {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
+                      </span>
+                    </td>
+                    <td data-label="File">
+                      {/* FR-R3 — download assigned manuscript */}
+                      <button
+                        type="button"
+                        className="jida-badge info"
+                        style={{ cursor: "pointer", border: "none" }}
+                        onClick={() =>
+                          downloadFile(
+                            `/api/reviewer/assignments/${a.id}/download`,
+                            `${a.manuscriptTitle ?? "manuscript"}.pdf`,
+                          ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                        }
+                      >
+                        Download
+                      </button>
+                    </td>
+                    <td data-label="Actions">
+                      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                        <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("review", a.id)}>Review</button>
+                        <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("progress", a.id)}>Progress</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedId === a.id && (
+                    <tr>
+                      <td colSpan={6} style={{ background: "var(--jida-surface-alt, rgba(0,0,0,0.03))" }}>
+                        <p style={{ margin: "0.5rem 0" }}><strong>Abstract:</strong> {a.abstract || "—"}</p>
+                        <p style={{ margin: "0.5rem 0" }}><strong>Keywords:</strong> {a.keywords?.length ? a.keywords.join(", ") : "—"}</p>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
               {assignments.length === 0 && !loading && (
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
@@ -710,13 +789,15 @@ export function ReviewerWorkspace() {
           <div className="jida-table-wrap">
             <table className="jida-table">
               <thead>
-                <tr><th>Manuscript</th><th>Recommendation</th></tr>
+                <tr><th>Manuscript</th><th>Recommendation</th><th>Comments to Author</th><th>Comments to Editor</th></tr>
               </thead>
               <tbody>
                 {history.map((h) => (
                   <tr key={h.id}>
-                    <td>{h.manuscriptTitle ?? h.manuscriptId}</td>
+                    <td>{h.manuscriptTitle ?? "Untitled manuscript"}</td>
                     <td><span className={badgeClass(h.recommendation ?? "pending")}>{h.recommendation ? statusLabel(h.recommendation) : "—"}</span></td>
+                    <td>{h.commentsToAuthor ?? "—"}</td>
+                    <td>{h.commentsToEditor ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -739,6 +820,14 @@ export function EditorWorkspace() {
   const [issueMsg, setIssueMsg] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [reviewers, setReviewers] = useState<ReviewerOption[]>([]);
+  const [presetManuscriptId, setPresetManuscriptId] = useState<string>("");
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const [unassigning, setUnassigning] = useState<string | null>(null);
+
+  function openPanel(panel: string, manuscriptId: string) {
+    setPresetManuscriptId(manuscriptId);
+    setActivePanel(panel);
+  }
 
   // FR-E3 — load available reviewers for assignment.
   useEffect(() => {
@@ -821,6 +910,34 @@ export function EditorWorkspace() {
     }
   }
 
+  async function handleUnassign(manuscriptId: string, reviewerId: string) {
+    if (!confirm("Unassign this reviewer?")) return;
+    setUnassigning(reviewerId);
+    try {
+      await unassignReviewer(manuscriptId, reviewerId);
+      fetchSubmissions();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Unassign failed");
+    } finally {
+      setUnassigning(null);
+    }
+  }
+
+  async function handleUploadEditedFile(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setUploadMsg(null);
+    const fd = new FormData(e.currentTarget);
+    const manuscriptId = String(fd.get("manuscriptId") ?? "").trim();
+    if (!manuscriptId) { setUploadMsg("Select a manuscript"); return; }
+    try {
+      await uploadEditedFile(manuscriptId, fd);
+      setUploadMsg("Edited manuscript uploaded — the author has been notified.");
+      fetchSubmissions();
+    } catch (err) {
+      setUploadMsg(err instanceof Error ? err.message : "Upload failed");
+    }
+  }
+
   const unassignedCount = submissions.filter((s) => !s.assignments || s.assignments.length === 0).length;
   const decisionPendingCount = submissions.filter((s) => s.status === "UNDER_REVIEW" || s.status === "REVISION_REQUIRED").length;
 
@@ -845,7 +962,7 @@ export function EditorWorkspace() {
 
       {activePanel === null && (
         <div className="jida-action-panels">
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("assign")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("assign", "")}>
             <span className="jida-panel-num">01</span>
             <div className="jida-panel-info">
               <strong>Assign Reviewer</strong>
@@ -853,7 +970,7 @@ export function EditorWorkspace() {
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("decision")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("decision", "")}>
             <span className="jida-panel-num">02</span>
             <div className="jida-panel-info">
               <strong>Editorial Decision</strong>
@@ -861,11 +978,19 @@ export function EditorWorkspace() {
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("publish")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("publish", "")}>
             <span className="jida-panel-num">03</span>
             <div className="jida-panel-info">
               <strong>Publish to Issue</strong>
               <p>Create an issue and publish an accepted manuscript.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("upload", "")}>
+            <span className="jida-panel-num">04</span>
+            <div className="jida-panel-info">
+              <strong>Upload Edited Manuscript</strong>
+              <p>Send back a revised file with remarks for the author.</p>
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
@@ -881,7 +1006,15 @@ export function EditorWorkspace() {
               <div><h3>Assign Reviewer</h3><p>Link a reviewer to a manuscript with a deadline.</p></div>
             </div>
             {assignMsg && <p>{assignMsg}</p>}
-            <label>Manuscript ID<input name="manuscriptId" placeholder="Paste ID from pipeline below" required /></label>
+            <label>
+              Manuscript
+              <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                <option value="" disabled>Select a manuscript</option>
+                {submissions.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title} — {statusLabel(s.status)}</option>
+                ))}
+              </select>
+            </label>
             <label>
               Reviewer
               {reviewers.length > 0 ? (
@@ -912,7 +1045,15 @@ export function EditorWorkspace() {
               <div><h3>Editorial Decision</h3><p>Accept, reject, or request revision.</p></div>
             </div>
             {decisionMsg && <p>{decisionMsg}</p>}
-            <label>Manuscript ID<input name="manuscriptId" placeholder="Paste ID from pipeline below" required /></label>
+            <label>
+              Manuscript
+              <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                <option value="" disabled>Select a manuscript</option>
+                {submissions.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title} — {statusLabel(s.status)}</option>
+                ))}
+              </select>
+            </label>
             <label>
               Decision
               <select name="decision" defaultValue="">
@@ -936,7 +1077,15 @@ export function EditorWorkspace() {
               <div><h3>Publish to Issue</h3><p>Create an issue and publish an accepted manuscript.</p></div>
             </div>
             {issueMsg && <p>{issueMsg}</p>}
-            <label>Manuscript ID<input name="manuscriptId" placeholder="Accepted manuscript ID" required /></label>
+            <label>
+              Manuscript
+              <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                <option value="" disabled>Select an accepted manuscript</option>
+                {submissions.filter((s) => s.status === "ACCEPTED").map((s) => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+              </select>
+            </label>
             <label>Volume<input type="number" name="volume" placeholder="e.g. 12" min={1} required /></label>
             <label>Issue number<input type="number" name="issueNum" placeholder="e.g. 2" min={1} required /></label>
             <label>Year<input type="number" name="year" defaultValue={new Date().getFullYear()} min={2000} required /></label>
@@ -945,6 +1094,31 @@ export function EditorWorkspace() {
               Publish to Google Scholar (adds citation metadata for indexing)
             </label>
             <button type="submit" className="jida-btn-primary">Publish to Journal Issue</button>
+          </form>
+        </div>
+      )}
+
+      {activePanel === "upload" && (
+        <div className="jida-form-panel">
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setUploadMsg(null); }}>← Back to actions</button>
+          <form className="jida-form" onSubmit={handleUploadEditedFile} encType="multipart/form-data">
+            <div className="jida-form-header">
+              <span>04</span>
+              <div><h3>Upload Edited Manuscript</h3><p>Send back a revised file with remarks for the author.</p></div>
+            </div>
+            {uploadMsg && <p>{uploadMsg}</p>}
+            <label>
+              Manuscript
+              <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                <option value="" disabled>Select a manuscript</option>
+                {submissions.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title} — {statusLabel(s.status)}</option>
+                ))}
+              </select>
+            </label>
+            <label>Edited file (PDF / DOCX)<input type="file" name="file" accept=".pdf,.docx" required /></label>
+            <label>Remarks for the author<textarea name="remarks" rows={3} placeholder="Explain what was changed" required /></label>
+            <button type="submit" className="jida-btn-primary">Upload Edited Manuscript</button>
           </form>
         </div>
       )}
@@ -963,6 +1137,8 @@ export function EditorWorkspace() {
                 <th>Author</th>
                 <th>Status</th>
                 <th>Reviewers</th>
+                <th>Files</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -973,14 +1149,70 @@ export function EditorWorkspace() {
                   <td data-label="Author">{s.authorName ?? "—"}</td>
                   <td data-label="Status"><span className={badgeClass(s.status)}>{statusLabel(s.status)}</span></td>
                   <td data-label="Reviewers">
-                    {s.assignments && s.assignments.length > 0
-                      ? s.assignments.map((a) => a.reviewer?.email ?? a.reviewer?.id ?? "assigned").join(", ")
-                      : <span className="jida-badge warning">Unassigned</span>}
+                    {s.assignments && s.assignments.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                        {s.assignments.map((a) => (
+                          <div key={a.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <span>{a.reviewer?.name ?? a.reviewer?.email ?? "assigned"}</span>
+                            <span className={badgeClass(a.recommendation ?? "pending")} style={{ fontSize: "0.7rem" }}>
+                              {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
+                            </span>
+                            {a.hasAttachment && a.reviewId && (
+                              <button
+                                type="button"
+                                className="jida-badge info"
+                                style={{ cursor: "pointer", border: "none", fontSize: "0.7rem" }}
+                                onClick={() =>
+                                  downloadFile(
+                                    `/api/editor/reviews/${a.reviewId}/download`,
+                                    `${s.title} — reviewer file`,
+                                  ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                                }
+                              >
+                                File
+                              </button>
+                            )}
+                            {!a.recommendation && a.reviewer?.id && (
+                              <button
+                                type="button"
+                                className="jida-btn-danger-sm"
+                                disabled={unassigning === a.reviewer.id}
+                                onClick={() => handleUnassign(s.id, a.reviewer!.id)}
+                              >
+                                {unassigning === a.reviewer.id ? "…" : "Unassign"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="jida-badge warning">Unassigned</span>
+                    )}
+                  </td>
+                  <td data-label="Files">
+                    <button
+                      type="button"
+                      className="jida-badge info"
+                      style={{ cursor: "pointer", border: "none" }}
+                      onClick={() =>
+                        downloadFile(`/api/editor/manuscripts/${s.id}/download`, `${s.title}.pdf`)
+                          .catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                      }
+                    >
+                      Download
+                    </button>
+                  </td>
+                  <td data-label="Actions">
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("assign", s.id)}>Assign</button>
+                      <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("decision", s.id)}>Decide</button>
+                      <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("upload", s.id)}>Upload</button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {submissions.length === 0 && !loading && (
-                <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
               )}
             </tbody>
           </table>

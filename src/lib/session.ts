@@ -29,6 +29,24 @@ export function clearSession(): void {
   localStorage.removeItem("email");
 }
 
+/**
+ * Reads the `exp` claim out of a JWT without verifying its signature — that's
+ * the backend's job. This is only used to decide whether to bounce the user
+ * back to /login before bothering to make a request with a dead token.
+ */
+export function isTokenExpired(token: string): boolean {
+  const payloadSegment = token.split(".")[1];
+  if (!payloadSegment) return true;
+  try {
+    const json = atob(payloadSegment.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(json) as { exp?: number };
+    if (!payload.exp) return false;
+    return Date.now() >= payload.exp * 1000;
+  } catch {
+    return true;
+  }
+}
+
 export function dashboardFor(role: Role): string {
   return dashboardByRole[role] ?? "/";
 }
