@@ -462,6 +462,7 @@ export function AuthorWorkspace() {
                   <th>Title</th>
                   <th>Status</th>
                   <th>Submitted</th>
+                  <th>Editor&apos;s Comments</th>
                   <th>Editor&apos;s Revision</th>
                   <th>Published Article</th>
                 </tr>
@@ -476,6 +477,22 @@ export function AuthorWorkspace() {
                     <td data-label="Title">{item.title}</td>
                     <td data-label="Status"><span className={badgeClass(item.status)}>{statusLabel(item.status)}</span></td>
                     <td data-label="Submitted">{(item.createdAt ?? item.submittedAt)?.slice(0, 10) ?? "—"}</td>
+                    <td data-label="Editor's Comments">
+                      {item.decisions && item.decisions.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {item.decisions.map((d, i) => (
+                            <div key={i}>
+                              <span className={badgeClass(d.decision)} style={{ fontSize: "0.7rem" }}>{statusLabel(d.decision)}</span>
+                              {" "}
+                              <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>{d.createdAt.slice(0, 10)}</span>
+                              {d.notes && <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem" }}>{d.notes}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td data-label="Editor's Revision">
                       {editorFile ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
@@ -521,7 +538,7 @@ export function AuthorWorkspace() {
                   );
                 })}
                 {manuscripts.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
+                  <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -877,9 +894,10 @@ export function EditorWorkspace() {
     const fd = new FormData(e.currentTarget);
     const manuscriptId = String(fd.get("manuscriptId") ?? "").trim();
     const decision = String(fd.get("decision") ?? "") as "ACCEPT" | "REJECT" | "REQUEST_REVISION";
+    const notes = String(fd.get("notes") ?? "").trim();
     if (!manuscriptId || !decision) { setDecisionMsg("All fields required"); return; }
     try {
-      await makeDecision(manuscriptId, decision);
+      await makeDecision(manuscriptId, decision, notes || undefined);
       setDecisionMsg("Decision recorded.");
       fetchSubmissions();
     } catch (err) {
@@ -1063,6 +1081,7 @@ export function EditorWorkspace() {
                 <option value="REQUEST_REVISION">Request Revision</option>
               </select>
             </label>
+            <label>Comments (visible to the author and other editors)<textarea name="notes" rows={3} placeholder="Explain the reasoning behind this decision" /></label>
             <button type="submit" className="jida-btn-primary">Record Decision</button>
           </form>
         </div>
@@ -1138,6 +1157,7 @@ export function EditorWorkspace() {
                 <th>Status</th>
                 <th>Reviewers</th>
                 <th>Files</th>
+                <th>Editor&apos;s Comments</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1202,6 +1222,22 @@ export function EditorWorkspace() {
                       Download
                     </button>
                   </td>
+                  <td data-label="Editor's Comments">
+                    {s.decisions && s.decisions.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                        {s.decisions.map((d, i) => (
+                          <div key={i}>
+                            <span className={badgeClass(d.decision)} style={{ fontSize: "0.7rem" }}>{statusLabel(d.decision)}</span>
+                            {" "}
+                            <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>{d.editorName} · {d.createdAt.slice(0, 10)}</span>
+                            {d.notes && <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem" }}>{d.notes}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td data-label="Actions">
                     <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                       <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("assign", s.id)}>Assign</button>
@@ -1212,7 +1248,7 @@ export function EditorWorkspace() {
                 </tr>
               ))}
               {submissions.length === 0 && !loading && (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
               )}
             </tbody>
           </table>

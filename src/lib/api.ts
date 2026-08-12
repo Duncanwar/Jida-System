@@ -289,8 +289,12 @@ export async function assignReviewers(
 export async function makeDecision(
   manuscriptId: string,
   decision: "ACCEPT" | "REJECT" | "REQUEST_REVISION",
+  notes?: string,
 ) {
-  return request("POST", `/api/editor/manuscripts/${manuscriptId}/decision`, { decision });
+  return request("POST", `/api/editor/manuscripts/${manuscriptId}/decision`, {
+    decision,
+    ...(notes ? { notes } : {}),
+  });
 }
 
 export async function getReviewers() {
@@ -383,6 +387,14 @@ export interface ManuscriptFileInfo {
   createdAt: string;
 }
 
+export interface EditorialDecisionInfo {
+  decision: "ACCEPT" | "REJECT" | "REQUEST_REVISION";
+  notes?: string | null;
+  createdAt: string;
+  /** Only present on the editor-side response — which editor left the remark. */
+  editorName?: string;
+}
+
 export interface ManuscriptSummary {
   id: string;
   title: string;
@@ -392,6 +404,7 @@ export interface ManuscriptSummary {
   submissionDeadline?: string;
   publication?: { slug: string; publishedAt: string } | null;
   files?: ManuscriptFileInfo[];
+  decisions?: EditorialDecisionInfo[];
 }
 
 export interface ReviewerOption {
@@ -433,6 +446,7 @@ export interface EditorSubmission {
   status: ManuscriptStatus;
   authorName?: string;
   assignments?: Assignment[];
+  decisions?: EditorialDecisionInfo[];
 }
 
 export interface PublicIssue {
