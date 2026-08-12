@@ -433,6 +433,19 @@ export interface EditorialDecisionInfo {
   editorName?: string;
 }
 
+/**
+ * A review as the author is shown it. The API withholds the reviewer's identity
+ * and their confidential comments to the editor, and sends nothing at all until
+ * an editorial decision has been recorded.
+ */
+export interface AuthorVisibleReview {
+  /** "Reviewer 1", "Reviewer 2" — peer review is blind, so no name is sent. */
+  reviewerLabel: string;
+  recommendation: ReviewRecommendation;
+  commentsToAuthor: string;
+  submittedAt: string;
+}
+
 export interface ManuscriptSummary {
   id: string;
   title: string;
@@ -443,6 +456,7 @@ export interface ManuscriptSummary {
   publication?: { slug: string; publishedAt: string } | null;
   files?: ManuscriptFileInfo[];
   decisions?: EditorialDecisionInfo[];
+  reviews?: AuthorVisibleReview[];
 }
 
 export interface ReviewerOption {
@@ -474,6 +488,8 @@ export interface Assignment {
   commentsToEditor?: string;
   /** Set only in editor-side responses — id of the reviewer's `Review` row, for downloading their attachment. */
   reviewId?: string;
+  /** When the reviewer submitted their comments; absent while the review is outstanding. */
+  reviewedAt?: string;
   hasAttachment?: boolean;
   reviewer?: { id: string; name?: string; email: string };
 }
