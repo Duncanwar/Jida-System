@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AppHeader } from "@/features/jida/components";
+import { AppHeader, ReviewArticleButton } from "@/features/jida/components";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -123,14 +123,7 @@ export default async function ArticlePage(
           </p>
 
           <div style={{ marginTop: "1.25rem", display: "flex", gap: "0.75rem" }}>
-            <a
-              href={`${BASE}/api/public/articles/${article.slug}/download`}
-              target="_blank"
-              rel="noreferrer"
-              className="jida-btn-primary"
-            >
-              Download full text
-            </a>
+            <ReviewArticleButton slug={article.slug} />
             <Link href="/archive" className="jida-nav-ghost">Back to archive</Link>
           </div>
         </section>

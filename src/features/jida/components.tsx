@@ -12,6 +12,7 @@ import {
   patchMe,
   getSubmissionSettings,
   downloadFile,
+  viewFile,
   getReviewers,
   setScholarReady,
   getAssignments,
@@ -41,6 +42,7 @@ import {
   type UserRole,
   type ReviewerOption,
 } from "@/lib/api";
+import { clearSession, readRole, readToken } from "@/lib/session";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -176,13 +178,12 @@ export function AppHeader() {
   const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
-    setUserRole(localStorage.getItem("role"));
-    setIsLoggedIn(!!localStorage.getItem("token"));
+    setUserRole(readRole());
+    setIsLoggedIn(!!readToken());
   }, [pathname]);
 
   function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
+    clearSession();
     router.push("/");
   }
   
@@ -1266,7 +1267,6 @@ export function ArchiveWorkspace() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   useEffect(() => {
     (async () => {
@@ -1342,30 +1342,40 @@ export function ArchiveWorkspace() {
         <div className="jida-table-wrap">
           <table className="jida-table">
             <thead>
-              <tr><th>Article</th><th>Author</th><th>Issue</th><th>Keywords</th><th>Download</th></tr>
+              <tr><th>Article</th><th>Author</th><th>Issue</th><th>Keywords</th><th>Review</th></tr>
             </thead>
             <tbody>
-              {articles.map((a) => (
+              {articles.map((a) => {
+                const authorName = [a.manuscript.author?.firstName, a.manuscript.author?.lastName]
+                  .filter(Boolean)
+                  .join(" ");
+                return (
                 <tr key={a.id}>
                   <td data-label="Article">
-                    <Link href={`/archive/${a.slug}`}><strong>{a.title}</strong></Link>
-                    <span>{a.id}</span>
+                    <Link href={`/archive/${a.slug}`}><strong>{a.manuscript.title}</strong></Link>
                   </td>
-                  <td data-label="Author">{a.authorName ?? "—"}</td>
-                  <td data-label="Issue">{a.issue ?? "—"}</td>
-                  <td data-label="Keywords">{a.keywords?.join(", ") ?? "—"}</td>
-                  <td data-label="Download">
-                    <a
-                      href={`${BASE}/api/public/articles/${a.slug}/download`}
-                      target="_blank"
-                      rel="noreferrer"
+                  <td data-label="Author">{authorName || "—"}</td>
+                  <td data-label="Issue">
+                    {a.issue ? `Vol. ${a.issue.volume}, No. ${a.issue.issueNumber}` : "—"}
+                  </td>
+                  <td data-label="Keywords">{a.manuscript.keywords?.join(", ") ?? "—"}</td>
+                  <td data-label="Review">
+                    <button
+                      type="button"
                       className="jida-badge info"
+                      style={{ cursor: "pointer", border: "none" }}
+                      onClick={() =>
+                        viewFile(`/api/public/articles/${a.slug}/download`).catch((e) =>
+                          alert(e instanceof Error ? e.message : "Failed to open article"),
+                        )
+                      }
                     >
-                      Download
-                    </a>
+                      Review
+                    </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {articles.length === 0 && !loading && (
                 <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No published articles found.</td></tr>
               )}
@@ -1374,6 +1384,22 @@ export function ArchiveWorkspace() {
         </div>
       </section>
     </section>
+  );
+}
+
+export function ReviewArticleButton({ slug }: { slug: string }) {
+  return (
+    <button
+      type="button"
+      className="jida-btn-primary"
+      onClick={() =>
+        viewFile(`/api/public/articles/${slug}/download`).catch((e) =>
+          alert(e instanceof Error ? e.message : "Failed to open article"),
+        )
+      }
+    >
+      Review article
+    </button>
   );
 }
 

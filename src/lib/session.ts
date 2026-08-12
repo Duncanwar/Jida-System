@@ -14,19 +14,57 @@ export const dashboardByRole: Record<Role, string> = {
   ADMIN: "/admin",
 };
 
+/**
+ * Safari (Private Browsing, or with cross-site tracking prevention on) throws
+ * `SecurityError: The operation is insecure` on any localStorage call instead
+ * of just returning null/no-op like other browsers. Swallow that so a blocked
+ * storage jar degrades to "signed out" rather than crashing the app.
+ */
+function safeGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
+
+function safeRemove(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 export function persistSession(session: AuthSession): Role {
   if (typeof window === "undefined") return session.user.role;
-  localStorage.setItem("token", session.accessToken);
-  localStorage.setItem("role", session.user.role);
-  localStorage.setItem("email", session.user.email);
+  safeSet("token", session.accessToken);
+  safeSet("role", session.user.role);
+  safeSet("email", session.user.email);
   return session.user.role;
 }
 
 export function clearSession(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
-  localStorage.removeItem("email");
+  safeRemove("token");
+  safeRemove("role");
+  safeRemove("email");
+}
+
+export function readToken(): string | null {
+  return typeof window === "undefined" ? null : safeGet("token");
+}
+
+export function readRole(): string | null {
+  return typeof window === "undefined" ? null : safeGet("role");
 }
 
 /**

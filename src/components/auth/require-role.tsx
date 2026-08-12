@@ -3,15 +3,15 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Role } from "@/lib/api";
-import { clearSession, isTokenExpired } from "@/lib/session";
+import { clearSession, isTokenExpired, readRole, readToken } from "@/lib/session";
 
 export function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedRole = localStorage.getItem("role");
+    const token = readToken();
+    const storedRole = readRole();
 
     if (!token || storedRole !== role || isTokenExpired(token)) {
       clearSession();

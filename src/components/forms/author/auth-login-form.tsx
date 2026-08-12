@@ -4,6 +4,7 @@ import { Mail, Eye, EyeOff } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
+import { persistSession } from "@/lib/session";
 
 export function AuthLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,8 +34,7 @@ export function AuthLoginForm() {
     const password = formData.get("password") as string;
     try {
       const data = await login(email, password, "AUTHOR");
-      localStorage.setItem("token", data.accessToken);
-      localStorage.setItem("role", "AUTHOR");
+      persistSession(data);
       router.push("/author");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

@@ -1,7 +1,14 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 function token() {
-  return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem("token") ?? "";
+  } catch {
+    // Safari (Private Browsing, cross-site tracking prevention) throws
+    // SecurityError instead of returning null — treat it as signed out.
+    return "";
+  }
 }
 
 /**
@@ -58,9 +65,13 @@ async function request<T>(
     // 401, which never sends a token. Bounce to /login instead of leaving
     // the user stuck on a page whose data calls are silently failing.
     if (res.status === 401 && t && typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      localStorage.removeItem("email");
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("email");
+      } catch {
+        // ignore — see token() above
+      }
       window.location.assign("/login");
     }
 
@@ -216,6 +227,33 @@ export async function downloadFile(path: string, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Opens a file inline for review rather than forcing a save-to-disk prompt.
+ * Fetching it as a blob strips whatever Content-Disposition the server sent,
+ * so the browser's own viewer decides how to show it — the reader can still
+ * download from there if they want to.
+ */
+export async function viewFile(path: string): Promise<void> {
+  const win = window.open("", "_blank");
+  try {
+    const res = await fetch(`${BASE}${path}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || err.message || "Failed to open file");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    if (win) {
+      win.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  } catch (e) {
+    win?.close();
+    throw e;
+  }
 }
 
 // ─── Author — Manuscripts ──────────────────────────────────────────────────
@@ -461,11 +499,13 @@ export interface PublicIssue {
 export interface PublicArticle {
   id: string;
   slug: string;
-  title: string;
-  authorName?: string;
-  keywords?: string[];
-  issue?: string;
-  publishedAt?: string;
+  publishedAt: string;
+  issue?: { volume: number; issueNumber: number; year: number; title?: string | null } | null;
+  manuscript: {
+    title: string;
+    keywords?: string[];
+    author?: { firstName?: string | null; lastName?: string | null; affiliation?: string | null };
+  };
 }
 
 export interface AdminUser {
