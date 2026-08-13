@@ -464,6 +464,7 @@ export function AuthorWorkspace() {
                   <th>Status</th>
                   <th>Submitted</th>
                   <th>Editor&apos;s Comments</th>
+                  <th>Reviewer Comments</th>
                   <th>Editor&apos;s Revision</th>
                   <th>Published Article</th>
                 </tr>
@@ -492,6 +493,26 @@ export function AuthorWorkspace() {
                         </div>
                       ) : (
                         "—"
+                      )}
+                    </td>
+                    <td data-label="Reviewer Comments">
+                      {item.reviews && item.reviews.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          {item.reviews.map((r) => (
+                            <div key={r.reviewerLabel}>
+                              <strong style={{ fontSize: "0.75rem" }}>{r.reviewerLabel}</strong>
+                              {" "}
+                              <span className={badgeClass(r.recommendation)} style={{ fontSize: "0.7rem" }}>{statusLabel(r.recommendation)}</span>
+                              <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>{r.commentsToAuthor}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>
+                          {item.status === "SUBMITTED" || item.status === "UNDER_REVIEW"
+                            ? "Released once the editor reaches a decision"
+                            : "—"}
+                        </span>
                       )}
                     </td>
                     <td data-label="Editor's Revision">
@@ -539,7 +560,7 @@ export function AuthorWorkspace() {
                   );
                 })}
                 {manuscripts.length === 0 && (
-                  <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1157,13 +1178,18 @@ export function EditorWorkspace() {
                 <th>Author</th>
                 <th>Status</th>
                 <th>Reviewers</th>
+                <th>Reviewer Comments</th>
                 <th>Files</th>
                 <th>Editor&apos;s Comments</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {submissions.map((s) => (
+              {submissions.map((s) => {
+                const reviewed = (s.assignments ?? []).filter(
+                  (a) => a.commentsToAuthor || a.commentsToEditor,
+                );
+                return (
                 <tr key={s.id}>
                   <td data-label="ID"><code style={{ fontSize: "0.75rem" }}>{s.id}</code></td>
                   <td data-label="Title">{s.title}</td>
@@ -1210,6 +1236,36 @@ export function EditorWorkspace() {
                       <span className="jida-badge warning">Unassigned</span>
                     )}
                   </td>
+                  <td data-label="Reviewer Comments">
+                    {reviewed.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: "16rem" }}>
+                        {reviewed.map((a) => (
+                          <div key={a.id}>
+                            <strong style={{ fontSize: "0.75rem" }}>
+                              {a.reviewer?.name ?? a.reviewer?.email ?? "Reviewer"}
+                            </strong>
+                            {a.reviewedAt && (
+                              <span style={{ fontSize: "0.75rem", opacity: 0.7 }}> · {a.reviewedAt.slice(0, 10)}</span>
+                            )}
+                            {a.commentsToEditor && (
+                              <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>
+                                <span className="jida-badge warning" style={{ fontSize: "0.65rem" }}>To editor</span>{" "}
+                                {a.commentsToEditor}
+                              </p>
+                            )}
+                            {a.commentsToAuthor && (
+                              <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>
+                                <span className="jida-badge info" style={{ fontSize: "0.65rem" }}>To author</span>{" "}
+                                {a.commentsToAuthor}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>No reviews submitted</span>
+                    )}
+                  </td>
                   <td data-label="Files">
                     <button
                       type="button"
@@ -1247,9 +1303,10 @@ export function EditorWorkspace() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {submissions.length === 0 && !loading && (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
               )}
             </tbody>
           </table>
