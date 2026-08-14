@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AppHeader, ReviewArticleButton } from "@/features/jida/components";
+import { AppHeader, AuthorHover, ReviewArticleButton } from "@/features/jida/components";
+import { formatIssueTitle } from "@/lib/api";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+/** Public origin of this site, used for the absolute URLs Scholar requires. */
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 type PublicArticleDetail = {
   id: string;
@@ -15,8 +18,19 @@ type PublicArticleDetail = {
     title: string;
     abstract: string;
     keywords: string[];
-    references: string;
-    author: { firstName?: string | null; lastName?: string | null; affiliation?: string | null };
+    references: string | null;
+    author: {
+      firstName?: string | null;
+      lastName?: string | null;
+      email?: string | null;
+      affiliation?: string | null;
+    };
+    coAuthors?: {
+      fullName: string;
+      email?: string | null;
+      affiliation?: string | null;
+      isCorresponding?: boolean;
+    }[];
   };
 };
 
@@ -33,6 +47,12 @@ async function fetchArticle(slug: string): Promise<PublicArticleDetail | null> {
 /**
  * FR-E12 / SRS §1.2 (indexing services) — Google Scholar discovers articles via
  * Highwire Press "citation_*" meta tags rendered on the public article page.
+ *
+ * Two rules drive the shape of this tag set. Every author needs their own
+ * `citation_author` tag — a single tag holding a joined list is read as one
+ * person with a very long name, which is how co-authors disappear from an
+ * index. And every URL must be absolute, because Scholar resolves them from its
+ * own crawler rather than relative to this page.
  */
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
@@ -41,27 +61,43 @@ export async function generateMetadata(
   const article = await fetchArticle(slug);
   if (!article) return { title: "Article not found — JIDA" };
 
-  const authorName = [article.manuscript.author.firstName, article.manuscript.author.lastName]
-    .filter(Boolean)
-    .join(" ");
+  const { manuscript, issue } = article;
 
-  const scholarTags: Record<string, string> = article.scholarReady
+  // One entry per author, lead author first — Next renders a repeated meta tag
+  // for each element of the array.
+  const authorTags = [
+    [manuscript.author.firstName, manuscript.author.lastName].filter(Boolean).join(" "),
+    ...(manuscript.coAuthors ?? []).map((c) => c.fullName),
+  ]
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  const scholarTags: Record<string, string | string[]> = article.scholarReady
     ? {
-        citation_title: article.manuscript.title,
-        citation_author: authorName || "Unknown",
+        citation_title: manuscript.title,
+        citation_author: authorTags.length ? authorTags : ["Unknown"],
         citation_publication_date: article.publishedAt.slice(0, 10).replace(/-/g, "/"),
+        citation_online_date: article.publishedAt.slice(0, 10).replace(/-/g, "/"),
         citation_journal_title: "Journal of Inter-Discourse Academia",
-        citation_volume: String(article.issue.volume),
-        citation_issue: String(article.issue.issueNumber),
+        citation_journal_abbrev: "JIDA",
+        citation_publisher: "Adventist University of Central Africa",
+        citation_volume: String(issue.volume),
+        citation_issue: String(issue.issueNumber),
+        citation_language: "en",
+        citation_abstract_html_url: `${SITE}/archive/${article.slug}`,
         citation_pdf_url: `${BASE}/api/public/articles/${article.slug}/download`,
-        citation_abstract_html_url: `/archive/${article.slug}`,
-        citation_keywords: article.manuscript.keywords.join("; "),
+        ...(manuscript.keywords.length
+          ? { citation_keywords: manuscript.keywords.join("; ") }
+          : {}),
+        ...(manuscript.author.affiliation
+          ? { citation_author_institution: manuscript.author.affiliation }
+          : {}),
       }
     : {};
 
   return {
-    title: `${article.manuscript.title} — JIDA`,
-    description: article.manuscript.abstract.slice(0, 300),
+    title: `${manuscript.title} — JIDA`,
+    description: manuscript.abstract.slice(0, 300),
     other: scholarTags,
   };
 }
@@ -89,7 +125,9 @@ export default async function ArticlePage(
 
   const { manuscript, issue } = article;
   const authorName =
-    [manuscript.author.firstName, manuscript.author.lastName].filter(Boolean).join(" ") || "Unknown author";
+    [manuscript.author.firstName, manuscript.author.lastName].filter(Boolean).join(" ") ||
+    "Unknown author";
+  const coAuthors = manuscript.coAuthors ?? [];
 
   return (
     <main className="jida-shell">
@@ -97,13 +135,35 @@ export default async function ArticlePage(
       <section className="jida-workspace">
         <div className="jida-page-title">
           <div>
-            <p className="jida-section-kicker">
-              Volume {issue.volume}, Issue {issue.issueNumber} · {issue.year}
-            </p>
+            <p className="jida-section-kicker">{formatIssueTitle(issue)}</p>
             <h2>{manuscript.title}</h2>
             <p>
-              {authorName}
+              <AuthorHover
+                author={{
+                  name: authorName,
+                  email: manuscript.author.email,
+                  affiliation: manuscript.author.affiliation,
+                  isCorresponding: true,
+                }}
+              >
+                {authorName}
+              </AuthorHover>
               {manuscript.author.affiliation ? ` — ${manuscript.author.affiliation}` : ""}
+              {coAuthors.map((c, i) => (
+                <span key={`${c.email}-${i}`}>
+                  {", "}
+                  <AuthorHover
+                    author={{
+                      name: c.fullName,
+                      email: c.email,
+                      affiliation: c.affiliation,
+                      isCorresponding: c.isCorresponding,
+                    }}
+                  >
+                    {c.fullName}
+                  </AuthorHover>
+                </span>
+              ))}
             </p>
           </div>
         </div>

@@ -3,29 +3,21 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/features/jida/components";
-import {
-  getPublicIssues,
-  getPublicArticles,
-  type PublicIssue,
-  type PublicArticle,
-} from "@/lib/api";
+import { getPublicIssues, type PublicIssue } from "@/lib/api";
 
 export default function Home() {
   const [issues, setIssues] = useState<PublicIssue[]>([]);
-  const [articles, setArticles] = useState<PublicArticle[]>([]);
 
   useEffect(() => {
     getPublicIssues()
       .then(setIssues)
       .catch(() => {});
-    getPublicArticles()
-      .then(setArticles)
-      .catch(() => {});
   }, []);
-  console.log("issues", issues);
-  const articleCount = articles.length
-  console.log("articleCount", articleCount);
-  console.log("articleCount", issues, articles);
+
+  // A volume can carry several issues, so the two counts differ: distinct
+  // volume numbers, and issues published overall.
+  const volumeCount = new Set(issues.map((i) => i.volume)).size;
+  const issueCount = issues.length;
 
   return (
     <main className="jida-shell">
@@ -52,16 +44,12 @@ export default function Home() {
 
         <div className="jida-home-hero-stats" aria-label="Platform statistics">
           <article>
-            <strong>{issues.length}</strong>
-            <span>Volumes</span>
+            <strong>{volumeCount}</strong>
+            <span className="jida-stat-label">VOLUMES</span>
           </article>
           <article>
-            <strong>{articleCount}</strong>
-            <span>Articles</span>
-          </article>
-          <article>
-            <strong>{articles.length}</strong>
-            <span>Published</span>
+            <strong>{issueCount}</strong>
+            <span className="jida-stat-label">ISSUES</span>
           </article>
         </div>
       </section>
@@ -72,7 +60,7 @@ export default function Home() {
           discourse across disciplines — connecting authors, reviewers, and
           editors in a structured digital workflow.
         </p>
-        <Link href="/signup">Apply as Author</Link>
+        <Link href="/signup">Register as Author</Link>
       </div>
 
       <section className="jida-contact">

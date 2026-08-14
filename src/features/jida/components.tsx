@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Settings, X, User } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   getManuscripts,
   submitManuscript,
@@ -31,6 +31,22 @@ import {
   adminGetUsers,
   adminCreateUser,
   adminDeleteUser,
+  adminUpdateUserRoles,
+  saveReviewerFeedback,
+  formatIssueTitle,
+  issueArticleCount,
+  ASSESSMENT_ITEMS,
+  REVIEW_RATINGS,
+  RECOMMENDATION_LABELS,
+  ROLE_LABELS,
+  ApiError,
+  type ScholarReadiness,
+  type CoAuthor,
+  type PublicAuthor,
+  type PublicCoAuthor,
+  type AuthorVisibleReview,
+  type ReviewRating,
+  type ReviewFormResult,
   type ManuscriptSummary,
   type Assignment,
   type EditorSubmission,
@@ -40,9 +56,17 @@ import {
   type ReviewRecommendation,
   type AdminUser,
   type UserRole,
+  type Role,
   type ReviewerOption,
 } from "@/lib/api";
-import { clearSession, readRole, readToken } from "@/lib/session";
+import {
+  canAccessRole,
+  clearSession,
+  dashboardByRole,
+  readRole,
+  readRoles,
+  readToken,
+} from "@/lib/session";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -169,16 +193,26 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
 
 // ─── AppHeader ─────────────────────────────────────────────────────────────
 
+/** Portals a multi-role account can switch between, in a stable order. */
+const SWITCHABLE_PORTALS: { role: Role; href: string; label: string }[] = [
+  { role: "EDITOR", href: "/editor", label: "Editor" },
+  { role: "REVIEWER", href: "/reviewer", label: "Reviewer" },
+  { role: "AUTHOR", href: "/author", label: "Author" },
+  { role: "ADMIN", href: "/admin", label: "Admin" },
+];
+
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRoles, setUserRoles] = useState<Role[]>([]);
   const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     setUserRole(readRole());
+    setUserRoles(readRoles());
     setIsLoggedIn(!!readToken());
   }, [pathname]);
 
@@ -186,11 +220,17 @@ export function AppHeader() {
     clearSession();
     router.push("/");
   }
-  
+
   const isPublicPage = pathname === "/" || pathname === "/archive";
-  const roleLabel = userRole
-    ? userRole.charAt(0) + userRole.slice(1).toLowerCase()
-    : null;
+  // The badge names the account's actual tier ("Chief Editor"), which is more
+  // informative than the portal it happens to be viewing.
+  const roleLabel = userRole ? (ROLE_LABELS[userRole as Role] ?? userRole) : null;
+
+  // Only portals this account can actually open. A single-role user sees no
+  // switcher at all — there is nothing to switch to.
+  const availablePortals = SWITCHABLE_PORTALS.filter((p) => canAccessRole(userRoles, p.role));
+  const showSwitcher = isLoggedIn && availablePortals.length > 1;
+  const homePortal = userRole ? (dashboardByRole[userRole as Role] ?? "/") : "/";
 
   return (
     <>
@@ -202,8 +242,26 @@ export function AppHeader() {
 
         <div className="jida-header-right">
           {!isPublicPage && isLoggedIn && roleLabel && (
-            <span className="jida-role-badge">{roleLabel} Portal</span>
+            <span className="jida-role-badge">{roleLabel}</span>
           )}
+
+          {/* Role switcher — how a chief editor reaches the reviewer and
+              author portals their role grants them. */}
+          {showSwitcher && (
+            <nav className="jida-role-switcher" aria-label="Switch portal">
+              {availablePortals.map((portal) => (
+                <Link
+                  key={portal.href}
+                  href={portal.href}
+                  className={`jida-role-switch${pathname === portal.href ? " active" : ""}`}
+                  aria-current={pathname === portal.href ? "page" : undefined}
+                >
+                  {portal.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+
           <nav className="jida-header-nav">
             {isPublicPage && !isLoggedIn && (
               <>
@@ -214,15 +272,7 @@ export function AppHeader() {
             
             {isPublicPage && isLoggedIn && (
               <>
-                <Link
-                  href={
-                    userRole === "AUTHOR" ? "/author"
-                    : userRole === "REVIEWER" ? "/reviewer"
-                    : userRole === "ADMIN" ? "/admin"
-                    : "/editor"
-                  }
-                  className="jida-nav-ghost"
-                >
+                <Link href={homePortal} className="jida-nav-ghost">
                   My Workspace
                 </Link>
                 <button
@@ -267,6 +317,261 @@ export function NotificationsPanel() {
   return null;
 }
 
+// ─── Author hover card ─────────────────────────────────────────────────────
+
+export interface HoverAuthor {
+  name?: string | null;
+  email?: string | null;
+  affiliation?: string | null;
+  /** Marks a co-author who also fields correspondence. */
+  isCorresponding?: boolean;
+}
+
+/**
+ * Shows an author's name, email and registered institution on hover.
+ *
+ * Deliberately absent from the reviewer portal: peer review here is blind, and
+ * a reviewer who could hover an author's name would learn exactly what the
+ * process is designed to withhold.
+ *
+ * Focusable and described by the card, so the details are reachable by keyboard
+ * and to a screen reader rather than being mouse-only.
+ */
+export function AuthorHover({
+  author,
+  children,
+}: {
+  author?: HoverAuthor | null;
+  children?: ReactNode;
+}) {
+  const label = children ?? author?.name ?? author?.email ?? "—";
+  // With nothing beyond the name to reveal, a hover card would be an empty box.
+  if (!author || (!author.email && !author.affiliation)) return <>{label}</>;
+
+  return (
+    <span className="jida-author-hover" tabIndex={0}>
+      <span className="jida-author-hover-name">{label}</span>
+      <span className="jida-author-card" role="tooltip">
+        <strong>{author.name ?? author.email}</strong>
+        {author.email && (
+          <a href={`mailto:${author.email}`} className="jida-author-card-email">
+            {author.email}
+          </a>
+        )}
+        <span className="jida-author-card-affiliation">
+          {author.affiliation?.trim() || "No institution on file"}
+        </span>
+        {author.isCorresponding && (
+          <span className="jida-badge info">Corresponding author</span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+/** Co-author names, each with a hover card, separated by commas. */
+function CoAuthorLine({ coAuthors }: { coAuthors: CoAuthor[] }) {
+  return (
+    <>
+      {coAuthors.map((c, i) => (
+        <Fragment key={`${c.email}-${i}`}>
+          {i > 0 && ", "}
+          <AuthorHover
+            author={{
+              name: c.fullName,
+              email: c.email,
+              affiliation: c.affiliation,
+              isCorresponding: c.isCorresponding,
+            }}
+          />
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/**
+ * A published article's byline — the submitting author followed by any
+ * co-authors, each name carrying its own hover card.
+ */
+function PublicAuthorLine({
+  author,
+  coAuthors,
+}: {
+  author?: PublicAuthor | null;
+  coAuthors?: PublicCoAuthor[];
+}) {
+  const entries = [
+    ...(author
+      ? [
+          {
+            key: "lead",
+            name: [author.firstName, author.lastName].filter(Boolean).join(" "),
+            hover: {
+              name: [author.firstName, author.lastName].filter(Boolean).join(" ") || null,
+              email: author.email,
+              affiliation: author.affiliation,
+              isCorresponding: true,
+            } satisfies HoverAuthor,
+          },
+        ]
+      : []),
+    ...(coAuthors ?? []).map((c, i) => ({
+      key: `co-${i}`,
+      name: c.fullName,
+      hover: {
+        name: c.fullName,
+        email: c.email,
+        affiliation: c.affiliation,
+        isCorresponding: c.isCorresponding,
+      } satisfies HoverAuthor,
+    })),
+  ].filter((e) => e.name);
+
+  if (entries.length === 0) return <>—</>;
+
+  return (
+    <>
+      {entries.map((entry, i) => (
+        <Fragment key={entry.key}>
+          {i > 0 && ", "}
+          <AuthorHover author={entry.hover}>{entry.name}</AuthorHover>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+// ─── Completed review form, read-only ──────────────────────────────────────
+
+/**
+ * A submitted review form as the reviewer who wrote it and editors see it:
+ * every section, including the ratings and the confidential comments. The
+ * author's view is built separately and deliberately shows far less.
+ */
+function ReviewFormSummary({ review }: { review: ReviewFormResult }) {
+  const rated = review.assessment.filter((a) => a.rating);
+  return (
+    <div className="jida-review-summary">
+      <p className="jida-review-recommendation">
+        <span className={badgeClass(review.recommendation)}>{review.recommendationLabel}</span>
+      </p>
+
+      {rated.length > 0 && (
+        <dl className="jida-review-ratings">
+          {rated.map((a) => (
+            <div key={a.key}>
+              <dt>{a.label}</dt>
+              <dd className={`jida-rating-value ${a.rating!.toLowerCase()}`}>
+                {statusLabel(a.rating!)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <div className="jida-review-block">
+        <h5>Comments and Suggestions to the Author(s)</h5>
+        <p>{review.commentsToAuthor}</p>
+        {review.specificSuggestions && <p>{review.specificSuggestions}</p>}
+      </div>
+
+      {review.commentsToEditor && (
+        <div className="jida-review-block confidential">
+          <h5>Confidential Comments <span className="jida-badge warning">Not shown to authors</span></h5>
+          <p>{review.commentsToEditor}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Author's feedback on a reviewer ───────────────────────────────────────
+
+/**
+ * "Authors' Feedback of Reviewer's Work to JIDA" — the closing section of the
+ * review form, and the only part of it the author fills in. Rated 1 (Poor) to
+ * 5 (Excellent); editors read the result, the reviewer never does.
+ */
+function ReviewerFeedbackForm({
+  review,
+  onSaved,
+}: {
+  review: AuthorVisibleReview;
+  onSaved: () => void;
+}) {
+  const [rating, setRating] = useState(review.feedback?.rating ?? 0);
+  const [comment, setComment] = useState(review.feedback?.comment ?? "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  async function save() {
+    if (rating < 1) {
+      setMsg("Choose a rating from 1 to 5.");
+      return;
+    }
+    setSaving(true);
+    setMsg(null);
+    try {
+      await saveReviewerFeedback(review.reviewId, { rating, comment: comment.trim() || undefined });
+      setMsg("Thank you — your feedback was sent to the editorial team.");
+      onSaved();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not save feedback");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="jida-feedback-toggle" onClick={() => setOpen(true)}>
+        {review.feedback
+          ? `Your rating of this review: ${review.feedback.rating}/5 — edit`
+          : "Rate this reviewer's work"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="jida-feedback">
+      <p className="jida-feedback-title">Your Feedback of the Reviewer&apos;s Work to JIDA</p>
+      <div className="jida-feedback-scale" role="radiogroup" aria-label="Rating from poor to excellent">
+        <span className="jida-feedback-anchor">Poor</span>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={rating === n}
+            className={`jida-feedback-dot${rating === n ? " active" : ""}`}
+            onClick={() => setRating(n)}
+          >
+            {n}
+          </button>
+        ))}
+        <span className="jida-feedback-anchor">Excellent</span>
+      </div>
+      <textarea
+        rows={2}
+        value={comment}
+        placeholder="Specific evaluation of the reviewer's review result (optional)"
+        onChange={(e) => setComment(e.target.value)}
+      />
+      {msg && <p className="jida-feedback-msg">{msg}</p>}
+      <div className="jida-feedback-actions">
+        <button type="button" className="jida-btn-primary" onClick={save} disabled={saving}>
+          {saving ? "Saving…" : "Submit feedback"}
+        </button>
+        <button type="button" className="jida-btn-secondary" onClick={() => setOpen(false)}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── AuthorWorkspace ───────────────────────────────────────────────────────
 
 export function AuthorWorkspace() {
@@ -279,8 +584,25 @@ export function AuthorWorkspace() {
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [deadline, setDeadline] = useState<string | null>(null);
   const [openForSubmissions, setOpenForSubmissions] = useState(true);
+  const [submitTab, setSubmitTab] = useState<"details" | "coauthors">("details");
+  const [coAuthors, setCoAuthors] = useState<CoAuthor[]>([]);
   const submitRef = useRef<HTMLFormElement>(null);
   const reviseRef = useRef<HTMLFormElement>(null);
+
+  function addCoAuthor() {
+    setCoAuthors((prev) => [
+      ...prev,
+      { fullName: "", email: "", affiliation: "", isCorresponding: false },
+    ]);
+  }
+
+  function updateCoAuthor(index: number, patch: Partial<CoAuthor>) {
+    setCoAuthors((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  }
+
+  function removeCoAuthor(index: number) {
+    setCoAuthors((prev) => prev.filter((_, i) => i !== index));
+  }
 
   // FR-A12 — show the journal's manuscript submission deadline to authors.
   useEffect(() => {
@@ -318,10 +640,24 @@ export function AuthorWorkspace() {
     e.preventDefault();
     setSubmitMsg(null);
     const fd = new FormData(e.currentTarget);
+
+    // Catch a half-filled co-author here rather than letting the server reject
+    // the whole submission after the file has already uploaded.
+    const partial = coAuthors.findIndex(
+      (c) => (c.fullName.trim() ? 0 : 1) + (c.email.trim() ? 0 : 1) === 1,
+    );
+    if (partial !== -1) {
+      setSubmitTab("coauthors");
+      setSubmitMsg(`Co-author ${partial + 1} needs both a name and an email address.`);
+      return;
+    }
+
     try {
-      const res = await submitManuscript(fd);
+      const res = await submitManuscript(fd, coAuthors);
       setSubmitMsg(`Manuscript submitted — ID: ${res.id}`);
       submitRef.current?.reset();
+      setCoAuthors([]);
+      setSubmitTab("details");
       fetchList();
     } catch (err) {
       setSubmitMsg(err instanceof Error ? err.message : "Submission failed");
@@ -407,11 +743,102 @@ export function AuthorWorkspace() {
               <div><h3>Submit Manuscript</h3><p>Provide the core article details before editorial screening.</p></div>
             </div>
             {submitMsg && <p className={submitMsg.startsWith("Manuscript") ? "jida-badge success" : "jida-badge danger"}>{submitMsg}</p>}
-            <label>Title<input name="title" placeholder="Enter manuscript title" required /></label>
-            <label>Abstract<textarea name="abstract" placeholder="Briefly summarize the manuscript" rows={4} required /></label>
-            <label>Keywords<input name="keywords" placeholder="Comma-separated keywords" /></label>
-            <label>References<textarea name="references" placeholder="Paste references or citation list" rows={3} /></label>
-            <label>Manuscript file (PDF / DOCX)<input type="file" name="file" accept=".pdf,.docx" required /></label>
+
+            <div className="jida-form-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={submitTab === "details"}
+                className={`jida-form-tab${submitTab === "details" ? " active" : ""}`}
+                onClick={() => setSubmitTab("details")}
+              >
+                Manuscript Details
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={submitTab === "coauthors"}
+                className={`jida-form-tab${submitTab === "coauthors" ? " active" : ""}`}
+                onClick={() => setSubmitTab("coauthors")}
+              >
+                Co-Authors{coAuthors.length > 0 ? ` (${coAuthors.length})` : ""}
+              </button>
+            </div>
+
+            {/* Both panes stay mounted: the fields are part of one form, and
+                unmounting the hidden tab would drop what was typed there. */}
+            <div hidden={submitTab !== "details"}>
+              <label>Title<input name="title" placeholder="Enter manuscript title" required /></label>
+              <label>Abstract<textarea name="abstract" placeholder="Briefly summarize the manuscript" rows={4} required /></label>
+              <label>Keywords<input name="keywords" placeholder="Comma-separated keywords" /></label>
+              <label>
+                References <span className="jida-optional">(optional)</span>
+                <textarea name="references" placeholder="Paste references or citation list" rows={3} />
+              </label>
+              <label>Manuscript file (PDF / DOCX)<input type="file" name="file" accept=".pdf,.docx" required /></label>
+            </div>
+
+            <div hidden={submitTab !== "coauthors"}>
+              <p className="jida-form-hint">
+                List any other authors on this manuscript. Tick “corresponding” for anyone who
+                should also field correspondence about it.
+              </p>
+
+              {coAuthors.length === 0 && (
+                <p className="jida-form-empty">No co-authors added — this is a single-author submission.</p>
+              )}
+
+              {coAuthors.map((co, i) => (
+                <fieldset key={i} className="jida-coauthor">
+                  <legend>Co-Author {i + 1}</legend>
+                  <div className="jida-coauthor-grid">
+                    <label>
+                      Full name
+                      <input
+                        value={co.fullName}
+                        onChange={(e) => updateCoAuthor(i, { fullName: e.target.value })}
+                        placeholder="e.g. Alice Umutoni"
+                      />
+                    </label>
+                    <label>
+                      Email
+                      <input
+                        type="email"
+                        value={co.email}
+                        onChange={(e) => updateCoAuthor(i, { email: e.target.value })}
+                        placeholder="name@institution.ac.rw"
+                      />
+                    </label>
+                    <label>
+                      Affiliation <span className="jida-optional">(optional)</span>
+                      <input
+                        value={co.affiliation ?? ""}
+                        onChange={(e) => updateCoAuthor(i, { affiliation: e.target.value })}
+                        placeholder="Department, University, City, Country"
+                      />
+                    </label>
+                  </div>
+                  <div className="jida-coauthor-actions">
+                    <label className="jida-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={co.isCorresponding ?? false}
+                        onChange={(e) => updateCoAuthor(i, { isCorresponding: e.target.checked })}
+                      />
+                      Corresponding author
+                    </label>
+                    <button type="button" className="jida-btn-danger-sm" onClick={() => removeCoAuthor(i)}>
+                      Remove
+                    </button>
+                  </div>
+                </fieldset>
+              ))}
+
+              <button type="button" className="jida-btn-secondary" onClick={addCoAuthor}>
+                + Add co-author
+              </button>
+            </div>
+
             <button type="submit" className="jida-btn-primary">Submit Manuscript</button>
           </form>
         </div>
@@ -455,115 +882,112 @@ export function AuthorWorkspace() {
         ) : listError ? (
           <p style={{ padding: "1rem", color: "red" }}>{listError}</p>
         ) : (
-          <div className="jida-table-wrap">
-            <table className="jida-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Submitted</th>
-                  <th>Editor&apos;s Comments</th>
-                  <th>Reviewer Comments</th>
-                  <th>Editor&apos;s Revision</th>
-                  <th>Published Article</th>
-                </tr>
-              </thead>
-              <tbody>
-                {manuscripts.map((item) => {
-                  const latestFile = item.files?.[0];
-                  const editorFile = latestFile?.source === "EDITOR" ? latestFile : undefined;
-                  return (
-                  <tr key={item.id}>
-                    <td data-label="ID"><code style={{ fontSize: "0.75rem" }}>{item.id}</code></td>
-                    <td data-label="Title">{item.title}</td>
-                    <td data-label="Status"><span className={badgeClass(item.status)}>{statusLabel(item.status)}</span></td>
-                    <td data-label="Submitted">{(item.createdAt ?? item.submittedAt)?.slice(0, 10) ?? "—"}</td>
-                    <td data-label="Editor's Comments">
-                      {item.decisions && item.decisions.length > 0 ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                          {item.decisions.map((d, i) => (
-                            <div key={i}>
-                              <span className={badgeClass(d.decision)} style={{ fontSize: "0.7rem" }}>{statusLabel(d.decision)}</span>
-                              {" "}
-                              <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>{d.createdAt.slice(0, 10)}</span>
-                              {d.notes && <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem" }}>{d.notes}</p>}
+          /* One horizontal card per submission. */
+          <div className="jida-track-list">
+            {manuscripts.map((item) => {
+              const latestFile = item.files?.[0];
+              const editorFile = latestFile?.source === "EDITOR" ? latestFile : undefined;
+              const submitted = (item.createdAt ?? item.submittedAt)?.slice(0, 10) ?? "—";
+              return (
+                <article key={item.id} className="jida-track-card">
+                  <div className="jida-track-main">
+                    <div className="jida-track-head">
+                      <h3>{item.title}</h3>
+                      <span className={badgeClass(item.status)}>{statusLabel(item.status)}</span>
+                    </div>
+                    <p className="jida-track-meta">
+                      Submitted {submitted} · <code>{item.id}</code>
+                    </p>
+                    {item.coAuthors && item.coAuthors.length > 0 && (
+                      <p className="jida-track-meta">
+                        Co-authors: <CoAuthorLine coAuthors={item.coAuthors} />
+                      </p>
+                    )}
+
+                    <div className="jida-track-comments">
+                      <section>
+                        <h4>Editor&apos;s Comments</h4>
+                        {item.decisions && item.decisions.length > 0 ? (
+                          item.decisions.map((d, i) => (
+                            <div key={i} className="jida-track-note">
+                              <span className={badgeClass(d.decision)}>{statusLabel(d.decision)}</span>{" "}
+                              <span className="jida-track-date">{d.createdAt.slice(0, 10)}</span>
+                              {d.notes && <p>{d.notes}</p>}
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td data-label="Reviewer Comments">
-                      {item.reviews && item.reviews.length > 0 ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                          {item.reviews.map((r) => (
-                            <div key={r.reviewerLabel}>
-                              <strong style={{ fontSize: "0.75rem" }}>{r.reviewerLabel}</strong>
-                              {" "}
-                              <span className={badgeClass(r.recommendation)} style={{ fontSize: "0.7rem" }}>{statusLabel(r.recommendation)}</span>
-                              <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>{r.commentsToAuthor}</p>
+                          ))
+                        ) : (
+                          <p className="jida-track-muted">No decision recorded yet.</p>
+                        )}
+                      </section>
+
+                      <section>
+                        <h4>Reviewer Comments</h4>
+                        {item.reviews && item.reviews.length > 0 ? (
+                          item.reviews.map((r) => (
+                            <div key={r.reviewId} className="jida-track-note">
+                              <strong>{r.reviewerLabel}</strong>
+                              <p>{r.commentsToAuthor}</p>
+                              {r.specificSuggestions && (
+                                <p className="jida-track-suggestions">{r.specificSuggestions}</p>
+                              )}
+                              <ReviewerFeedbackForm review={r} onSaved={() => fetchList(query)} />
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>
-                          {item.status === "SUBMITTED" || item.status === "UNDER_REVIEW"
-                            ? "Released once the editor reaches a decision"
-                            : "—"}
-                        </span>
-                      )}
-                    </td>
-                    <td data-label="Editor's Revision">
-                      {editorFile ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                          <button
-                            type="button"
-                            className="jida-badge info"
-                            style={{ cursor: "pointer", border: "none", alignSelf: "flex-start" }}
-                            onClick={() =>
-                              downloadFile(
-                                `/api/manuscripts/${item.id}/files/${editorFile.id}/download`,
-                                editorFile.originalName,
-                              ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
-                            }
-                          >
-                            Download
-                          </button>
-                          {editorFile.remarks && <span style={{ fontSize: "0.75rem" }}>{editorFile.remarks}</span>}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td data-label="Published Article">
-                      {item.publication ? (
+                          ))
+                        ) : (
+                          <p className="jida-track-muted">
+                            {item.status === "SUBMITTED" || item.status === "UNDER_REVIEW"
+                              ? "Released once the editor reaches a decision."
+                              : "No reviewer comments."}
+                          </p>
+                        )}
+                      </section>
+                    </div>
+                  </div>
+
+                  <aside className="jida-track-actions">
+                    {editorFile && (
+                      <>
                         <button
                           type="button"
-                          className="jida-badge info"
-                          style={{ cursor: "pointer", border: "none" }}
+                          className="jida-btn-secondary"
                           onClick={() =>
                             downloadFile(
-                              `/api/manuscripts/published/${item.publication!.slug}/download`,
-                              `${item.title}.pdf`,
+                              `/api/manuscripts/${item.id}/files/${editorFile.id}/download`,
+                              editorFile.originalName,
                             ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
                           }
                         >
-                          Download
+                          Editor&apos;s revision
                         </button>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                  );
-                })}
-                {manuscripts.length === 0 && (
-                  <tr><td colSpan={8} style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</td></tr>
-                )}
-              </tbody>
-            </table>
+                        {editorFile.remarks && (
+                          <p className="jida-track-remarks">{editorFile.remarks}</p>
+                        )}
+                      </>
+                    )}
+                    {item.publication && (
+                      <button
+                        type="button"
+                        className="jida-btn-primary"
+                        onClick={() =>
+                          downloadFile(
+                            `/api/manuscripts/published/${item.publication!.slug}/download`,
+                            `${item.title}.pdf`,
+                          ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                        }
+                      >
+                        Published article
+                      </button>
+                    )}
+                    {!editorFile && !item.publication && (
+                      <p className="jida-track-muted">No files to download yet.</p>
+                    )}
+                  </aside>
+                </article>
+              );
+            })}
+            {manuscripts.length === 0 && (
+              <p style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</p>
+            )}
           </div>
         )}
       </section>
@@ -627,18 +1051,41 @@ export function ReviewerWorkspace() {
     const fd = new FormData(e.currentTarget);
     const id = String(fd.get("assignmentId") ?? "").trim();
     if (!id) { setReviewMsg("Select an assignment from the queue below"); return; }
+
+    // Every item in "Assessment of the article" must be rated — the form asks
+    // the reviewer to score all seven.
+    const missing = ASSESSMENT_ITEMS.filter((item) => !fd.get(item.key));
+    if (missing.length) {
+      setReviewMsg(
+        `Rate every item in the assessment section — ${missing.length} still unrated.`,
+      );
+      return;
+    }
+    const recommendation = String(fd.get("recommendation") ?? "");
+    if (!recommendation) {
+      setReviewMsg("Choose an overall recommendation.");
+      return;
+    }
+
+    const ratings = Object.fromEntries(
+      ASSESSMENT_ITEMS.map((item) => [item.key, fd.get(item.key) as ReviewRating]),
+    ) as Record<(typeof ASSESSMENT_ITEMS)[number]["key"], ReviewRating>;
+
     const file = fd.get("file");
     try {
       await submitReview(id, {
+        ...ratings,
+        recommendation: recommendation as ReviewRecommendation,
         commentsToAuthor: String(fd.get("commentsToAuthor") ?? ""),
-        commentsToEditor: String(fd.get("commentsToEditor") ?? ""),
-        recommendation: String(fd.get("recommendation") ?? "") as ReviewRecommendation,
+        specificSuggestions: String(fd.get("specificSuggestions") ?? "") || undefined,
+        commentsToEditor: String(fd.get("commentsToEditor") ?? "") || undefined,
         file: file instanceof File && file.size > 0 ? file : null,
       });
       setReviewMsg("Review submitted successfully.");
       const [a, h] = await Promise.all([getAssignments(), getReviewHistory()]);
       setAssignments(a);
       setHistory(h);
+      setActivePanel(null);
     } catch (err) {
       setReviewMsg(err instanceof Error ? err.message : "Submission failed");
     }
@@ -693,23 +1140,96 @@ export function ReviewerWorkspace() {
           <form className="jida-form" onSubmit={handleReview} encType="multipart/form-data">
             <div className="jida-form-header">
               <span>01</span>
-              <div><h3>Submit Review Evaluation</h3><p>{activeAssignment?.manuscriptTitle ?? "Select a manuscript from the queue below"}</p></div>
+              <div>
+                <h3>Manuscript Review Form</h3>
+                <p>{activeAssignment?.manuscriptTitle ?? "Select a manuscript from the queue below"}</p>
+              </div>
             </div>
-            {reviewMsg && <p>{reviewMsg}</p>}
+            {reviewMsg && (
+              <p className={reviewMsg.startsWith("Review submitted") ? "jida-badge success" : "jida-badge danger"}>
+                {reviewMsg}
+              </p>
+            )}
             <input type="hidden" name="assignmentId" value={presetAssignmentId} />
-            <label>Comments to Author<textarea name="commentsToAuthor" rows={3} placeholder="Feedback for the author" required /></label>
-            <label>Comments to Editor<textarea name="commentsToEditor" rows={3} placeholder="Notes for the editor" required /></label>
-            <label>
-              Recommendation
-              <select name="recommendation" defaultValue="">
-                <option value="" disabled>Select recommendation</option>
-                <option value="ACCEPT">Accept</option>
-                <option value="MINOR_REVISION">Minor Revision</option>
-                <option value="MAJOR_REVISION">Major Revision</option>
-                <option value="REJECT">Reject</option>
-              </select>
-            </label>
-            <label>Annotated file (optional)<input type="file" name="file" accept=".pdf,.docx" /></label>
+
+            <p className="jida-form-hint">
+              All material submitted to JIDA is confidential and must not be shared before
+              publication. Tell the editor if you have any conflict of interest in reviewing this
+              paper.
+            </p>
+
+            {/* 1 — Assessment of the article */}
+            <fieldset className="jida-review-section">
+              <legend>Assessment of the Article</legend>
+              <p className="jida-form-hint">
+                Rate the quality of the article on each aspect below.
+              </p>
+              <div className="jida-rating-table">
+                <div className="jida-rating-head">
+                  <span />
+                  {REVIEW_RATINGS.map((r) => (
+                    <span key={r} className="jida-rating-col">{statusLabel(r)}</span>
+                  ))}
+                </div>
+                {ASSESSMENT_ITEMS.map((item) => (
+                  <div key={item.key} className="jida-rating-row">
+                    <span className="jida-rating-label">{item.label}</span>
+                    {REVIEW_RATINGS.map((r) => (
+                      <label key={r} className="jida-rating-cell">
+                        <input type="radio" name={item.key} value={r} />
+                        <span className="jida-rating-mobile">{statusLabel(r)}</span>
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+
+            {/* 2 — Overall recommendation */}
+            <fieldset className="jida-review-section">
+              <legend>Overall Recommendation</legend>
+              <div className="jida-recommendation-list">
+                {(Object.keys(RECOMMENDATION_LABELS) as ReviewRecommendation[]).map((key) => (
+                  <label key={key} className="jida-radio-row">
+                    <input type="radio" name="recommendation" value={key} />
+                    {RECOMMENDATION_LABELS[key]}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {/* 3 — The only section the author is shown */}
+            <fieldset className="jida-review-section">
+              <legend>Comments and Suggestions to the Author(s)</legend>
+              <p className="jida-form-hint">
+                This section — and only this section — is shown to the author.
+              </p>
+              <label>
+                Overall evaluation of the manuscript (100–200 words). For manuscripts that cannot
+                be published, specify the inadequacies.
+                <textarea name="commentsToAuthor" rows={5} required />
+              </label>
+              <label>
+                Reasons for acceptance or rejection, and any suggestions for revision or
+                improvement — title, abstract, literature review, methods, figures, tables,
+                language, structure, innovation. <span className="jida-optional">(optional)</span>
+                <textarea name="specificSuggestions" rows={5} />
+              </label>
+            </fieldset>
+
+            {/* 4 — Editor-only */}
+            <fieldset className="jida-review-section">
+              <legend>Confidential Comments</legend>
+              <p className="jida-form-hint">
+                Nothing in this section is shown to the authors.
+              </p>
+              <label>
+                Confidential comments to the editor <span className="jida-optional">(optional)</span>
+                <textarea name="commentsToEditor" rows={3} />
+              </label>
+            </fieldset>
+
+            <label>Annotated file <span className="jida-optional">(optional)</span><input type="file" name="file" accept=".pdf,.docx" /></label>
             <button type="submit" className="jida-btn-primary" disabled={!presetAssignmentId}>Submit Review</button>
           </form>
         </div>
@@ -742,7 +1262,11 @@ export function ReviewerWorkspace() {
 
       <section className="jida-card">
         <div className="jida-section-heading">
-          <div><p className="jida-section-kicker">Assignments</p><h2>Review Queue</h2></div>
+          <div>
+            <p className="jida-section-kicker">Assignments</p>
+            <h2>Review Queue</h2>
+            <p className="jida-section-note">Most recently submitted manuscripts first.</p>
+          </div>
           <span className="jida-badge">{assignments.length} manuscripts</span>
         </div>
         <div className="jida-table-wrap">
@@ -750,6 +1274,7 @@ export function ReviewerWorkspace() {
             <thead>
               <tr>
                 <th>Manuscript</th>
+                <th>Submitted</th>
                 <th>Deadline</th>
                 <th>Progress</th>
                 <th>Recommendation</th>
@@ -771,6 +1296,7 @@ export function ReviewerWorkspace() {
                         <strong>{a.manuscriptTitle ?? "Untitled manuscript"}</strong>
                       </button>
                     </td>
+                    <td data-label="Submitted">{a.submittedAt?.slice(0, 10) ?? "—"}</td>
                     <td data-label="Deadline">{a.deadline?.slice(0, 10)}</td>
                     <td data-label="Progress"><span className={badgeClass(a.progress)}>{statusLabel(a.progress)}</span></td>
                     <td data-label="Recommendation">
@@ -803,7 +1329,7 @@ export function ReviewerWorkspace() {
                   </tr>
                   {expandedId === a.id && (
                     <tr>
-                      <td colSpan={6} style={{ background: "var(--jida-surface-alt, rgba(0,0,0,0.03))" }}>
+                      <td colSpan={7} style={{ background: "var(--jida-surface-alt, rgba(0,0,0,0.03))" }}>
                         <p style={{ margin: "0.5rem 0" }}><strong>Abstract:</strong> {a.abstract || "—"}</p>
                         <p style={{ margin: "0.5rem 0" }}><strong>Keywords:</strong> {a.keywords?.length ? a.keywords.join(", ") : "—"}</p>
                       </td>
@@ -812,7 +1338,7 @@ export function ReviewerWorkspace() {
                 </Fragment>
               ))}
               {assignments.length === 0 && !loading && (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
               )}
             </tbody>
           </table>
@@ -825,22 +1351,24 @@ export function ReviewerWorkspace() {
             <div><p className="jida-section-kicker">History</p><h2>Past Reviews</h2></div>
             <span className="jida-badge">{history.length}</span>
           </div>
-          <div className="jida-table-wrap">
-            <table className="jida-table">
-              <thead>
-                <tr><th>Manuscript</th><th>Recommendation</th><th>Comments to Author</th><th>Comments to Editor</th></tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id}>
-                    <td>{h.manuscriptTitle ?? "Untitled manuscript"}</td>
-                    <td><span className={badgeClass(h.recommendation ?? "pending")}>{h.recommendation ? statusLabel(h.recommendation) : "—"}</span></td>
-                    <td>{h.commentsToAuthor ?? "—"}</td>
-                    <td>{h.commentsToEditor ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="jida-track-list">
+            {history.map((h) => (
+              <article key={h.id} className="jida-track-card">
+                <div className="jida-track-main">
+                  <div className="jida-track-head">
+                    <h3>{h.manuscriptTitle ?? "Untitled manuscript"}</h3>
+                    {h.review && (
+                      <span className="jida-track-date">{h.review.createdAt.slice(0, 10)}</span>
+                    )}
+                  </div>
+                  {h.review ? (
+                    <ReviewFormSummary review={h.review} />
+                  ) : (
+                    <p className="jida-track-muted">No form on file for this review.</p>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       )}
@@ -862,6 +1390,8 @@ export function EditorWorkspace() {
   const [presetManuscriptId, setPresetManuscriptId] = useState<string>("");
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
   const [unassigning, setUnassigning] = useState<string | null>(null);
+  /** What stands between the article just published and Google Scholar. */
+  const [scholarReport, setScholarReport] = useState<ScholarReadiness | null>(null);
 
   function openPanel(panel: string, manuscriptId: string) {
     setPresetManuscriptId(manuscriptId);
@@ -930,6 +1460,7 @@ export function EditorWorkspace() {
   async function handlePublish(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIssueMsg(null);
+    setScholarReport(null);
     const fd = new FormData(e.currentTarget);
     const volume = Number(fd.get("volume"));
     const issue = Number(fd.get("issueNum"));
@@ -939,11 +1470,44 @@ export function EditorWorkspace() {
     try {
       const { id: issueId } = await createIssue({ volume, issue, year });
       const publication = await publishToIssue(issueId, manuscriptId);
-      // FR-E12 — expose the published work to Google Scholar indexing.
-      if (scholar && publication?.id) {
-        await setScholarReady(publication.id, true);
+
+      if (!scholar || !publication?.id) {
+        setIssueMsg("Manuscript published to issue.");
+        fetchSubmissions();
+        return;
       }
-      setIssueMsg(scholar ? "Manuscript published and marked for Google Scholar indexing." : "Manuscript published to issue.");
+
+      // FR-E12 — expose the published work to Google Scholar indexing. The
+      // article is already published either way; only the indexing flag can
+      // fail, and when it does the editor needs to see exactly why.
+      try {
+        const result = await setScholarReady(publication.id, true);
+        setIssueMsg("Manuscript published and marked for Google Scholar indexing.");
+        setScholarReport(result.warnings?.length ? result : null);
+      } catch (scholarErr) {
+        // The 400 body carries the blockers; ApiError keeps it on `details`.
+        const readiness =
+          scholarErr instanceof ApiError
+            ? (scholarErr.details as unknown as ScholarReadiness | undefined)
+            : undefined;
+        setIssueMsg(
+          "Manuscript published, but it is not yet ready for Google Scholar indexing.",
+        );
+        setScholarReport(
+          readiness?.blockers ? readiness : {
+            ready: false,
+            blockers: [
+              {
+                id: "unknown",
+                severity: "blocker",
+                message:
+                  scholarErr instanceof Error ? scholarErr.message : "Scholar check failed",
+              },
+            ],
+            warnings: [],
+          },
+        );
+      }
       fetchSubmissions();
     } catch (err) {
       setIssueMsg(err instanceof Error ? err.message : "Publish failed");
@@ -1118,6 +1682,41 @@ export function EditorWorkspace() {
               <div><h3>Publish to Issue</h3><p>Create an issue and publish an accepted manuscript.</p></div>
             </div>
             {issueMsg && <p>{issueMsg}</p>}
+
+            {/* What Google Scholar needs before it will index the article. */}
+            {scholarReport && (
+              <div
+                className={`jida-scholar-report${scholarReport.ready ? " ready" : ""}`}
+                role="status"
+              >
+                <p className="jida-scholar-report-title">
+                  {scholarReport.ready
+                    ? "Indexed for Google Scholar, with recommendations"
+                    : "Not yet ready for Google Scholar"}
+                </p>
+                {scholarReport.blockers.length > 0 && (
+                  <>
+                    <h5>Must be fixed before indexing</h5>
+                    <ul>
+                      {scholarReport.blockers.map((c) => (
+                        <li key={c.id} className="blocker">{c.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {scholarReport.warnings.length > 0 && (
+                  <>
+                    <h5>Recommended</h5>
+                    <ul>
+                      {scholarReport.warnings.map((c) => (
+                        <li key={c.id} className="warning">{c.message}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
             <label>
               Manuscript
               <select name="manuscriptId" defaultValue={presetManuscriptId} required>
@@ -1169,46 +1768,50 @@ export function EditorWorkspace() {
           <div><p className="jida-section-kicker">Submissions</p><h2>Editorial Pipeline</h2></div>
           <span className="jida-badge">{submissions.length} submissions</span>
         </div>
-        <div className="jida-table-wrap">
-          <table className="jida-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Author</th>
-                <th>Status</th>
-                <th>Reviewers</th>
-                <th>Reviewer Comments</th>
-                <th>Files</th>
-                <th>Editor&apos;s Comments</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((s) => {
-                const reviewed = (s.assignments ?? []).filter(
-                  (a) => a.commentsToAuthor || a.commentsToEditor,
-                );
-                return (
-                <tr key={s.id}>
-                  <td data-label="ID"><code style={{ fontSize: "0.75rem" }}>{s.id}</code></td>
-                  <td data-label="Title">{s.title}</td>
-                  <td data-label="Author">{s.authorName ?? "—"}</td>
-                  <td data-label="Status"><span className={badgeClass(s.status)}>{statusLabel(s.status)}</span></td>
-                  <td data-label="Reviewers">
-                    {s.assignments && s.assignments.length > 0 ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-                        {s.assignments.map((a) => (
-                          <div key={a.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+        {/* One horizontal card per submission. */}
+        <div className="jida-track-list">
+          {submissions.map((s) => {
+            const assignments = s.assignments ?? [];
+            const submittedReviews = assignments.filter((a) => a.review);
+            return (
+              <article key={s.id} className="jida-track-card">
+                <div className="jida-track-main">
+                  <div className="jida-track-head">
+                    <h3>{s.title}</h3>
+                    <span className={badgeClass(s.status)}>{statusLabel(s.status)}</span>
+                  </div>
+                  <p className="jida-track-meta">
+                    <AuthorHover
+                      author={
+                        s.author ?? (s.authorName ? { name: s.authorName } : null)
+                      }
+                    >
+                      {s.authorName ?? "—"}
+                    </AuthorHover>
+                    {s.submittedAt ? ` · submitted ${s.submittedAt.slice(0, 10)}` : ""} ·{" "}
+                    <code>{s.id}</code>
+                  </p>
+                  {s.coAuthors && s.coAuthors.length > 0 && (
+                    <p className="jida-track-meta">
+                      Co-authors: <CoAuthorLine coAuthors={s.coAuthors} />
+                    </p>
+                  )}
+
+                  <div className="jida-track-comments">
+                    <section>
+                      <h4>Reviewers</h4>
+                      {assignments.length > 0 ? (
+                        assignments.map((a) => (
+                          <div key={a.id} className="jida-reviewer-row">
                             <span>{a.reviewer?.name ?? a.reviewer?.email ?? "assigned"}</span>
-                            <span className={badgeClass(a.recommendation ?? "pending")} style={{ fontSize: "0.7rem" }}>
+                            <span className={badgeClass(a.recommendation ?? "pending")}>
                               {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
                             </span>
                             {a.hasAttachment && a.reviewId && (
                               <button
                                 type="button"
                                 className="jida-badge info"
-                                style={{ cursor: "pointer", border: "none", fontSize: "0.7rem" }}
+                                style={{ cursor: "pointer", border: "none" }}
                                 onClick={() =>
                                   downloadFile(
                                     `/api/editor/reviews/${a.reviewId}/download`,
@@ -1230,86 +1833,79 @@ export function EditorWorkspace() {
                               </button>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="jida-badge warning">Unassigned</span>
-                    )}
-                  </td>
-                  <td data-label="Reviewer Comments">
-                    {reviewed.length > 0 ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", minWidth: "16rem" }}>
-                        {reviewed.map((a) => (
-                          <div key={a.id}>
-                            <strong style={{ fontSize: "0.75rem" }}>
-                              {a.reviewer?.name ?? a.reviewer?.email ?? "Reviewer"}
-                            </strong>
-                            {a.reviewedAt && (
-                              <span style={{ fontSize: "0.75rem", opacity: 0.7 }}> · {a.reviewedAt.slice(0, 10)}</span>
-                            )}
-                            {a.commentsToEditor && (
-                              <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>
-                                <span className="jida-badge warning" style={{ fontSize: "0.65rem" }}>To editor</span>{" "}
-                                {a.commentsToEditor}
-                              </p>
-                            )}
-                            {a.commentsToAuthor && (
-                              <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>
-                                <span className="jida-badge info" style={{ fontSize: "0.65rem" }}>To author</span>{" "}
-                                {a.commentsToAuthor}
-                              </p>
-                            )}
+                        ))
+                      ) : (
+                        <span className="jida-badge warning">Unassigned</span>
+                      )}
+                    </section>
+
+                    <section>
+                      <h4>Editor&apos;s Comments</h4>
+                      {s.decisions && s.decisions.length > 0 ? (
+                        s.decisions.map((d, i) => (
+                          <div key={i} className="jida-track-note">
+                            <span className={badgeClass(d.decision)}>{statusLabel(d.decision)}</span>{" "}
+                            <span className="jida-track-date">
+                              {d.editorName} · {d.createdAt.slice(0, 10)}
+                            </span>
+                            {d.notes && <p>{d.notes}</p>}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>No reviews submitted</span>
-                    )}
-                  </td>
-                  <td data-label="Files">
-                    <button
-                      type="button"
-                      className="jida-badge info"
-                      style={{ cursor: "pointer", border: "none" }}
-                      onClick={() =>
-                        downloadFile(`/api/editor/manuscripts/${s.id}/download`, `${s.title}.pdf`)
-                          .catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
-                      }
-                    >
-                      Download
-                    </button>
-                  </td>
-                  <td data-label="Editor's Comments">
-                    {s.decisions && s.decisions.length > 0 ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                        {s.decisions.map((d, i) => (
-                          <div key={i}>
-                            <span className={badgeClass(d.decision)} style={{ fontSize: "0.7rem" }}>{statusLabel(d.decision)}</span>
-                            {" "}
-                            <span style={{ fontSize: "0.75rem", opacity: 0.7 }}>{d.editorName} · {d.createdAt.slice(0, 10)}</span>
-                            {d.notes && <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem" }}>{d.notes}</p>}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td data-label="Actions">
-                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                      <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("assign", s.id)}>Assign</button>
-                      <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("decision", s.id)}>Decide</button>
-                      <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("upload", s.id)}>Upload</button>
+                        ))
+                      ) : (
+                        <p className="jida-track-muted">No decision recorded yet.</p>
+                      )}
+                    </section>
+                  </div>
+
+                  {/* Completed review forms in full — the editor sees every
+                      section, including the confidential comments. */}
+                  {submittedReviews.length > 0 && (
+                    <div className="jida-review-forms">
+                      <h4>Submitted Review Forms</h4>
+                      {submittedReviews.map((a) => (
+                        <details key={a.id} className="jida-review-details">
+                          <summary>
+                            {a.reviewer?.name ?? a.reviewer?.email ?? "Reviewer"}
+                            {a.reviewedAt ? ` · ${a.reviewedAt.slice(0, 10)}` : ""}
+                            {a.authorFeedback ? ` · author rated ${a.authorFeedback.rating}/5` : ""}
+                          </summary>
+                          <ReviewFormSummary review={a.review!} />
+                          {a.authorFeedback && (
+                            <div className="jida-review-block">
+                              <h5>Author&apos;s Feedback of the Reviewer&apos;s Work</h5>
+                              <p>
+                                Rating: <strong>{a.authorFeedback.rating}/5</strong>
+                                {a.authorFeedback.comment ? ` — ${a.authorFeedback.comment}` : ""}
+                              </p>
+                            </div>
+                          )}
+                        </details>
+                      ))}
                     </div>
-                  </td>
-                </tr>
-                );
-              })}
-              {submissions.length === 0 && !loading && (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</td></tr>
-              )}
-            </tbody>
-          </table>
+                  )}
+                </div>
+
+                <aside className="jida-track-actions">
+                  <button
+                    type="button"
+                    className="jida-btn-secondary"
+                    onClick={() =>
+                      downloadFile(`/api/editor/manuscripts/${s.id}/download`, `${s.title}.pdf`)
+                        .catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+                    }
+                  >
+                    Download
+                  </button>
+                  <button type="button" className="jida-btn-secondary" onClick={() => openPanel("assign", s.id)}>Assign</button>
+                  <button type="button" className="jida-btn-secondary" onClick={() => openPanel("decision", s.id)}>Decide</button>
+                  <button type="button" className="jida-btn-secondary" onClick={() => openPanel("upload", s.id)}>Upload</button>
+                </aside>
+              </article>
+            );
+          })}
+          {submissions.length === 0 && !loading && (
+            <p style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</p>
+          )}
         </div>
       </section>
     </section>
@@ -1374,19 +1970,49 @@ export function ArchiveWorkspace() {
         />
       </section>
 
+      {/* Issues, each listing everything published in it. */}
       <section className="jida-card">
         <div className="jida-section-heading">
           <div><p className="jida-section-kicker">Issues</p><h2>Journal Issues</h2></div>
+          <span className="jida-badge info">{issues.length} issues</span>
         </div>
-        <div className="jida-archive">
-          {issues.map((issue) => (
-            <article key={issue.id} className="jida-issue">
-              <span>Volume {issue.volume}</span>
-              <h3>Issue {issue.issue}, {issue.year}</h3>
-              <p>Published {issue.publishedAt?.slice(0, 10)}</p>
-              <strong>{issue.articleCount} articles</strong>
-            </article>
-          ))}
+        <div className="jida-issue-list">
+          {issues.map((issue) => {
+            const count = issueArticleCount(issue);
+            return (
+              <article key={issue.id} className="jida-issue-card">
+                <header className="jida-issue-card-head">
+                  <div>
+                    <h3>{formatIssueTitle(issue)}</h3>
+                    {issue.title && <p className="jida-issue-subtitle">{issue.title}</p>}
+                    <p className="jida-issue-meta">
+                      {count} article{count === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </header>
+
+                {issue.publications && issue.publications.length > 0 ? (
+                  <ol className="jida-issue-contents">
+                    {issue.publications.map((pub) => (
+                      <li key={pub.id}>
+                        <Link href={`/archive/${pub.slug}`} className="jida-issue-article-title">
+                          {pub.manuscript.title}
+                        </Link>
+                        <span className="jida-issue-article-authors">
+                          <PublicAuthorLine
+                            author={pub.manuscript.author}
+                            coAuthors={pub.manuscript.coAuthors}
+                          />
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="jida-issue-empty">No articles in this issue yet.</p>
+                )}
+              </article>
+            );
+          })}
           {issues.length === 0 && !loading && <p style={{ padding: "1rem" }}>No issues published yet.</p>}
         </div>
       </section>
@@ -1402,19 +2028,23 @@ export function ArchiveWorkspace() {
               <tr><th>Article</th><th>Author</th><th>Issue</th><th>Keywords</th><th>Review</th></tr>
             </thead>
             <tbody>
-              {articles.map((a) => {
-                const authorName = [a.manuscript.author?.firstName, a.manuscript.author?.lastName]
-                  .filter(Boolean)
-                  .join(" ");
-                return (
+              {articles.map((a) => (
                 <tr key={a.id}>
                   <td data-label="Article">
                     <Link href={`/archive/${a.slug}`}><strong>{a.manuscript.title}</strong></Link>
                   </td>
-                  <td data-label="Author">{authorName || "—"}</td>
-                  <td data-label="Issue">
-                    {a.issue ? `Vol. ${a.issue.volume}, No. ${a.issue.issueNumber}` : "—"}
+                  {/* Plain text, no hover card — this column lists names only. */}
+                  <td data-label="Author">
+                    {[
+                      [a.manuscript.author?.firstName, a.manuscript.author?.lastName]
+                        .filter(Boolean)
+                        .join(" "),
+                      ...(a.manuscript.coAuthors ?? []).map((c) => c.fullName),
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "—"}
                   </td>
+                  <td data-label="Issue">{a.issue ? formatIssueTitle(a.issue) : "—"}</td>
                   <td data-label="Keywords">{a.manuscript.keywords?.join(", ") ?? "—"}</td>
                   <td data-label="Review">
                     <button
@@ -1431,8 +2061,7 @@ export function ArchiveWorkspace() {
                     </button>
                   </td>
                 </tr>
-                );
-              })}
+              ))}
               {articles.length === 0 && !loading && (
                 <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No published articles found.</td></tr>
               )}
@@ -1472,11 +2101,99 @@ const ADMIN_TABS: { id: AdminTab; label: string }[] = [
 ];
 
 const ROLE_BADGE: Record<UserRole, string> = {
-  AUTHOR:   "jida-badge info",
-  REVIEWER: "jida-badge success",
-  EDITOR:   "jida-badge warning",
-  ADMIN:    "jida-badge danger",
+  AUTHOR:           "jida-badge info",
+  REVIEWER:         "jida-badge success",
+  EDITOR:           "jida-badge warning",
+  ADMIN:            "jida-badge danger",
+  CHIEF_EDITOR:     "jida-badge warning",
+  ASSOCIATE_EDITOR: "jida-badge warning",
 };
+
+/** Roles an admin can grant, in the order they appear on the create form. */
+const ASSIGNABLE_ROLES: UserRole[] = [
+  "AUTHOR",
+  "REVIEWER",
+  "EDITOR",
+  "CHIEF_EDITOR",
+  "ASSOCIATE_EDITOR",
+  "ADMIN",
+];
+
+/** Inline editor for an existing account's roles. */
+function RoleEditor({ user, onSaved }: { user: AdminUser; onSaved: () => void }) {
+  const held = user.roles?.length ? user.roles : [user.role];
+  const [open, setOpen] = useState(false);
+  const [primary, setPrimary] = useState<UserRole>(user.role);
+  const [selected, setSelected] = useState<UserRole[]>(held);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggle(role: UserRole) {
+    setSelected((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    );
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      await adminUpdateUserRoles(user.id, {
+        role: primary,
+        roles: [...new Set<UserRole>([primary, ...selected])],
+      });
+      setOpen(false);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update roles");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="jida-btn-secondary" onClick={() => setOpen(true)}>
+        Edit roles
+      </button>
+    );
+  }
+
+  return (
+    <div className="jida-role-editor">
+      <label>
+        Primary
+        <select value={primary} onChange={(e) => setPrimary(e.target.value as UserRole)}>
+          {ASSIGNABLE_ROLES.map((r) => (
+            <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+          ))}
+        </select>
+      </label>
+      <div className="jida-role-checkboxes">
+        {ASSIGNABLE_ROLES.map((r) => (
+          <label key={r} className="jida-checkbox">
+            <input
+              type="checkbox"
+              checked={selected.includes(r) || r === primary}
+              disabled={r === primary}
+              onChange={() => toggle(r)}
+            />
+            {ROLE_LABELS[r]}
+          </label>
+        ))}
+      </div>
+      {error && <p className="jida-feedback-msg">{error}</p>}
+      <div className="jida-feedback-actions">
+        <button type="button" className="jida-btn-primary" onClick={save} disabled={saving}>
+          {saving ? "Saving…" : "Save roles"}
+        </button>
+        <button type="button" className="jida-btn-secondary" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function AdminWorkspace() {
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
@@ -1509,15 +2226,26 @@ export function AdminWorkspace() {
     setCreating(true);
     setCreateMsg(null);
     const fd = new FormData(e.currentTarget);
+    const primary = String(fd.get("role") ?? "AUTHOR") as UserRole;
+    // The primary role decides the landing portal; the checkboxes add any
+    // further roles the account should hold.
+    const extra = fd.getAll("extraRoles").map(String) as UserRole[];
+    const roles = [...new Set<UserRole>([primary, ...extra])];
     try {
       const created = await adminCreateUser({
         email:       String(fd.get("email") ?? ""),
         password:    String(fd.get("password") ?? ""),
-        role:        String(fd.get("role") ?? "AUTHOR") as UserRole,
+        role:        primary,
+        roles,
         name:        String(fd.get("name") ?? "") || undefined,
         institution: String(fd.get("institution") ?? "") || undefined,
       });
-      setCreateMsg({ ok: true, text: `User "${created.email}" created as ${created.role}.` });
+      setCreateMsg({
+        ok: true,
+        text: `User "${created.email}" created with ${(created.roles ?? [created.role])
+          .map((r) => ROLE_LABELS[r])
+          .join(", ")}.`,
+      });
       createRef.current?.reset();
       fetchUsers();
     } catch (err) {
@@ -1615,11 +2343,11 @@ export function AdminWorkspace() {
                   <input name="password" type="password" placeholder="Minimum 8 characters" minLength={8} required />
                 </label>
                 <label>
-                  Role <span className="jida-required">*</span>
+                  Primary Role <span className="jida-required">*</span>
                   <select name="role" defaultValue="AUTHOR" required>
-                    <option value="AUTHOR">Author</option>
-                    <option value="REVIEWER">Reviewer</option>
-                    <option value="EDITOR">Editor</option>
+                    {ASSIGNABLE_ROLES.map((r) => (
+                      <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                    ))}
                   </select>
                 </label>
                 <label>
@@ -1627,6 +2355,22 @@ export function AdminWorkspace() {
                   <input name="institution" type="text" placeholder="University or affiliation" />
                 </label>
               </div>
+
+              <fieldset className="jida-review-section">
+                <legend>Additional Roles</legend>
+                <p className="jida-form-hint">
+                  An account can hold several roles. A chief editor already carries editor,
+                  reviewer and author rights, so there is no need to tick those.
+                </p>
+                <div className="jida-role-checkboxes">
+                  {ASSIGNABLE_ROLES.filter((r) => r !== "ADMIN").map((r) => (
+                    <label key={r} className="jida-checkbox">
+                      <input type="checkbox" name="extraRoles" value={r} />
+                      {ROLE_LABELS[r]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
 
               <button type="submit" className="jida-btn-primary" disabled={creating}>
                 {creating ? "Creating…" : "Create User"}
@@ -1655,7 +2399,7 @@ export function AdminWorkspace() {
                     <tr>
                       <th>Name</th>
                       <th>Email</th>
-                      <th>Role</th>
+                      <th>Roles</th>
                       <th>Institution</th>
                       <th>Joined</th>
                       <th>Actions</th>
@@ -1664,22 +2408,39 @@ export function AdminWorkspace() {
                   <tbody>
                     {users.map((u) => (
                       <tr key={u.id}>
-                        <td data-label="Name">{u.name ?? "—"}</td>
+                        <td data-label="Name">
+                          <AuthorHover
+                            author={{
+                              name: u.name ?? null,
+                              email: u.email,
+                              affiliation: u.institution ?? null,
+                            }}
+                          >
+                            {u.name ?? "—"}
+                          </AuthorHover>
+                        </td>
                         <td data-label="Email">{u.email}</td>
-                        <td data-label="Role">
-                          <span className={ROLE_BADGE[u.role]}>{u.role}</span>
+                        <td data-label="Roles">
+                          <div className="jida-role-badges">
+                            {(u.roles?.length ? u.roles : [u.role]).map((r) => (
+                              <span key={r} className={ROLE_BADGE[r]}>{ROLE_LABELS[r]}</span>
+                            ))}
+                          </div>
                         </td>
                         <td data-label="Institution">{u.institution ?? "—"}</td>
                         <td data-label="Joined">{u.createdAt?.slice(0, 10) ?? "—"}</td>
                         <td data-label="Actions">
-                          <button
-                            type="button"
-                            className="jida-btn-danger-sm"
-                            disabled={deleting === u.id}
-                            onClick={() => handleDelete(u.id, u.email)}
-                          >
-                            {deleting === u.id ? "…" : "Remove"}
-                          </button>
+                          <div className="jida-admin-row-actions">
+                            <RoleEditor user={u} onSaved={fetchUsers} />
+                            <button
+                              type="button"
+                              className="jida-btn-danger-sm"
+                              disabled={deleting === u.id}
+                              onClick={() => handleDelete(u.id, u.email)}
+                            >
+                              {deleting === u.id ? "…" : "Remove"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
