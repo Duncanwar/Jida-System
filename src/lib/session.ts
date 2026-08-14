@@ -1,4 +1,4 @@
-import type { AuthSession, Role } from "@/lib/api";
+import { EDITOR_ROLES, type AuthSession, type Role } from "@/lib/api";
 
 /**
  * Single place that decides where a signed-in user lands and how the session is
@@ -12,6 +12,20 @@ export const dashboardByRole: Record<Role, string> = {
   REVIEWER: "/reviewer",
   EDITOR: "/editor",
   ADMIN: "/admin",
+  // Chief and associate editors share the editor portal.
+  CHIEF_EDITOR: "/editor",
+  ASSOCIATE_EDITOR: "/editor",
+};
+
+/**
+ * Which role a portal represents. Used to decide whether the account may open
+ * a portal, and to mark the active entry in the header's role switcher.
+ */
+export const roleByDashboard: Record<string, Role> = {
+  "/author": "AUTHOR",
+  "/reviewer": "REVIEWER",
+  "/editor": "EDITOR",
+  "/admin": "ADMIN",
 };
 
 /**
@@ -48,6 +62,7 @@ export function persistSession(session: AuthSession): Role {
   if (typeof window === "undefined") return session.user.role;
   safeSet("token", session.accessToken);
   safeSet("role", session.user.role);
+  safeSet("roles", JSON.stringify(session.user.roles ?? [session.user.role]));
   safeSet("email", session.user.email);
   return session.user.role;
 }
@@ -55,6 +70,7 @@ export function persistSession(session: AuthSession): Role {
 export function clearSession(): void {
   if (typeof window === "undefined") return;
   safeRemove("token");
+  safeRemove("roles");
   safeRemove("role");
   safeRemove("email");
 }
@@ -65,6 +81,33 @@ export function readToken(): string | null {
 
 export function readRole(): string | null {
   return typeof window === "undefined" ? null : safeGet("role");
+}
+
+/**
+ * Every role the signed-in account holds. Falls back to the single stored role
+ * so a session created before multi-role support still resolves to something
+ * sensible rather than an empty switcher.
+ */
+export function readRoles(): Role[] {
+  if (typeof window === "undefined") return [];
+  const raw = safeGet("roles");
+  if (raw) {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed as Role[];
+    } catch {
+      // fall through to the single-role reading
+    }
+  }
+  const single = safeGet("role");
+  return single ? [single as Role] : [];
+}
+
+/** True when the account can open the portal a given role represents. */
+export function canAccessRole(held: Role[], required: Role): boolean {
+  if (held.includes(required)) return true;
+  // Any editor tier opens the editor portal.
+  return required === "EDITOR" && held.some((r) => EDITOR_ROLES.includes(r));
 }
 
 /**

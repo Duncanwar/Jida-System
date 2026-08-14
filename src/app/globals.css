@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 @import "tw-animate-css";
 
 
@@ -27,7 +27,7 @@ body.auth-page{
   }
 }
 
-/* ─── Login page — AUCA-style two-column layout ─────────── */
+/* â”€â”€â”€ Login page â€” AUCA-style two-column layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-auth-screen {
   width: 100%;
@@ -1585,7 +1585,7 @@ button:hover{
   }
 }
 
-/* ─── Workspace action panels ───────────────────────────── */
+/* â”€â”€â”€ Workspace action panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-action-panels {
   display: grid;
@@ -1698,7 +1698,7 @@ button.jida-back-btn:hover {
   border-color: #2e5fa4;
 }
 
-/* ─── Contact section ───────────────────────────────────── */
+/* â”€â”€â”€ Contact section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-contact {
   background: #fff;
@@ -1808,7 +1808,7 @@ button.jida-back-btn:hover {
   display: block;
 }
 
-/* ─── Hero eyebrow ──────────────────────────────────────── */
+/* â”€â”€â”€ Hero eyebrow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-home-hero-eyebrow {
   font-size: 0.8rem;
@@ -1819,7 +1819,7 @@ button.jida-back-btn:hover {
   text-align: center;
 }
 
-/* ─── Role-aware header elements ────────────────────────── */
+/* â”€â”€â”€ Role-aware header elements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-header-brand {
   text-decoration: none;
@@ -1907,7 +1907,7 @@ button.jida-nav-btn:hover {
   background: #e8ab35;
 }
 
-/* ─── Admin tab bar ────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Admin tab bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-admin-tabbar {
   position: sticky;
@@ -1967,7 +1967,7 @@ button.jida-nav-btn:hover {
   color: #10223d;
 }
 
-/* ─── Admin create-user form ─────────────────────────────────────────── */
+/* â”€â”€â”€ Admin create-user form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-admin-create-form {
   display: grid;
@@ -2042,7 +2042,7 @@ button.jida-nav-btn:hover {
   cursor: not-allowed;
 }
 
-/* ─── Settings button ──────────────────────────────────────────────────── */
+/* â”€â”€â”€ Settings button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-settings-btn {
   width: 2rem;
@@ -2070,7 +2070,7 @@ button.jida-nav-btn:hover {
   transform: rotate(30deg);
 }
 
-/* ─── Profile modal ────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Profile modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-modal-overlay {
   position: fixed;
@@ -2232,7 +2232,7 @@ button.jida-nav-btn:hover {
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
-/* ─── Auth: email verification + Google sign-in (FR-AUTH-1, FR-AUTH-2) ───── */
+/* â”€â”€â”€ Auth: email verification + Google sign-in (FR-AUTH-1, FR-AUTH-2) â”€â”€â”€â”€â”€ */
 
 .jida-auth-notice {
   color: #14532d;
@@ -2267,7 +2267,7 @@ button.jida-nav-btn:hover {
   text-decoration: underline;
 }
 
-/* Inline "resend" affordance inside an error box — a button that reads as a link. */
+/* Inline "resend" affordance inside an error box â€” a button that reads as a link. */
 button.jida-link-btn {
   width: auto;
   height: auto;
@@ -2294,7 +2294,7 @@ button.jida-link-btn:disabled {
   cursor: not-allowed;
 }
 
-/* ─── Google sign-in ─────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Google sign-in â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-google-auth {
   margin-top: 1.25rem;
@@ -2339,7 +2339,7 @@ button.jida-link-btn:disabled {
   font-size: 0.82rem;
 }
 
-/* ─── Verification pages (/verify-email, /check-email) ───────────────────── */
+/* â”€â”€â”€ Verification pages (/verify-email, /check-email) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-verify-screen {
   min-height: 100vh;
@@ -2428,7 +2428,7 @@ button.jida-link-btn:disabled {
   font-size: 0.82rem;
 }
 
-/* ─── Auth shell + registration screen ──────────────────────────────────── */
+/* â”€â”€â”€ Auth shell + registration screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* The (auth) layout wrapper. Intentionally inert: each auth screen paints its
    own full-bleed background. It previously forced bg-gray-100/dark:bg-gray-900,
@@ -2500,5 +2500,851 @@ button.jida-password-toggle:hover {
   .jida-auth-screen .jida-auth-form-side {
     padding: 2rem 1.5rem;
     border-right: none;
+  }
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Multi-role portals, the manuscript review form, and the issue archive
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* â”€â”€ Hero stat labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-stat-label {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 800;
+}
+
+/* â”€â”€ Header role switcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-role-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: rgba(16, 34, 61, 0.06);
+}
+
+.jida-role-switch {
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #345073;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.jida-role-switch:hover {
+  background: rgba(16, 34, 61, 0.08);
+}
+
+.jida-role-switch.active {
+  background: #10223d;
+  color: #fff;
+}
+
+/* â”€â”€ Form tabs (co-authors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-form-tabs {
+  display: flex;
+  gap: 0.35rem;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.jida-form-tab {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #6a81a5;
+  border-bottom: 2px solid transparent;
+}
+
+.jida-form-tab.active {
+  color: #10223d;
+  border-bottom-color: #1d4d91;
+}
+
+.jida-optional {
+  font-weight: 400;
+  color: #6a81a5;
+  font-size: 0.82rem;
+}
+
+.jida-form-hint {
+  font-size: 0.85rem;
+  color: #345073;
+  margin-bottom: 0.8rem;
+  line-height: 1.5;
+}
+
+.jida-form-empty {
+  font-size: 0.88rem;
+  color: #6a81a5;
+  padding: 0.9rem 0;
+}
+
+.jida-section-note {
+  font-size: 0.82rem;
+  color: #6a81a5;
+  margin-top: 0.2rem;
+}
+
+/* â”€â”€ Co-author entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-coauthor {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.9rem 1rem 1rem;
+  margin-bottom: 0.85rem;
+  background: #f8fafc;
+}
+
+.jida-coauthor legend {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a81a5;
+  padding: 0 0.4rem;
+}
+
+.jida-coauthor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+}
+
+.jida-coauthor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.jida-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: #345073;
+}
+
+.jida-checkbox input {
+  width: auto !important;
+  margin: 0;
+}
+
+/* â”€â”€ Horizontal tracking / pipeline cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.jida-track-card {
+  display: flex;
+  gap: 1.25rem;
+  align-items: stretch;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #1d4d91;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.05);
+}
+
+.jida-track-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.jida-track-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.jida-track-head h3 {
+  font-size: 1.02rem;
+  color: #10223d;
+  margin: 0;
+}
+
+.jida-track-meta {
+  font-size: 0.8rem;
+  color: #6a81a5;
+  margin-top: 0.3rem;
+}
+
+.jida-track-meta code {
+  font-size: 0.74rem;
+}
+
+.jida-track-comments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+
+.jida-track-comments h4,
+.jida-review-forms h4 {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #6a81a5;
+  margin-bottom: 0.45rem;
+}
+
+.jida-track-note {
+  margin-bottom: 0.6rem;
+  font-size: 0.86rem;
+  color: #22364f;
+}
+
+.jida-track-note p {
+  margin-top: 0.25rem;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.jida-track-suggestions {
+  border-left: 2px solid #e2e8f0;
+  padding-left: 0.65rem;
+  color: #345073;
+}
+
+.jida-track-date {
+  font-size: 0.78rem;
+  color: #6a81a5;
+}
+
+.jida-track-muted {
+  font-size: 0.84rem;
+  color: #8ea3c0;
+}
+
+.jida-track-remarks {
+  font-size: 0.78rem;
+  color: #345073;
+  line-height: 1.45;
+}
+
+.jida-track-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 11rem;
+  border-left: 1px solid #eef2f7;
+  padding-left: 1rem;
+}
+
+.jida-reviewer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+  margin-bottom: 0.4rem;
+}
+
+/* â”€â”€ Completed review form, read-only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-review-forms {
+  margin-top: 1rem;
+  border-top: 1px solid #eef2f7;
+  padding-top: 0.85rem;
+}
+
+.jida-review-details {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.6rem;
+  background: #f8fafc;
+}
+
+.jida-review-details summary {
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #10223d;
+}
+
+.jida-review-summary {
+  margin-top: 0.75rem;
+}
+
+.jida-review-recommendation {
+  margin-bottom: 0.7rem;
+}
+
+.jida-review-ratings {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: 0.85rem;
+}
+
+.jida-review-ratings > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.82rem;
+  border-bottom: 1px dotted #dbe3ee;
+  padding-bottom: 0.25rem;
+}
+
+.jida-review-ratings dt {
+  color: #345073;
+}
+
+.jida-rating-value {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.jida-rating-value.excellent { color: #1a7f4b; }
+.jida-rating-value.good      { color: #2f7d32; }
+.jida-rating-value.moderate  { color: #9a6b12; }
+.jida-rating-value.poor      { color: #b5501f; }
+.jida-rating-value.bad       { color: #b3261e; }
+
+.jida-review-block {
+  margin-top: 0.7rem;
+}
+
+.jida-review-block h5 {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6a81a5;
+  margin-bottom: 0.3rem;
+}
+
+.jida-review-block p {
+  font-size: 0.86rem;
+  color: #22364f;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  margin-bottom: 0.35rem;
+}
+
+.jida-review-block.confidential {
+  border-left: 3px solid #e0b34d;
+  padding-left: 0.7rem;
+  background: #fffaf0;
+  border-radius: 0 6px 6px 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.35rem;
+}
+
+/* â”€â”€ The review form itself â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-review-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.1rem 1.1rem;
+  margin-bottom: 1rem;
+  background: #ffffff;
+}
+
+.jida-review-section legend {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #10223d;
+  padding: 0 0.45rem;
+}
+
+.jida-rating-table {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.jida-rating-head,
+.jida-rating-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.6fr) repeat(5, minmax(4rem, 0.6fr));
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.jida-rating-head {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.jida-rating-col {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6a81a5;
+}
+
+.jida-rating-row {
+  padding: 0.5rem 0;
+  border-bottom: 1px dotted #e8edf4;
+}
+
+.jida-rating-label {
+  font-size: 0.85rem;
+  color: #22364f;
+  line-height: 1.4;
+}
+
+.jida-rating-cell {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 !important;
+}
+
+.jida-rating-cell input {
+  width: auto !important;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* The rating label sits in the column header on wide screens; it is repeated
+   next to each radio only when the table collapses on narrow ones. */
+.jida-rating-mobile {
+  display: none;
+}
+
+.jida-recommendation-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.jida-radio-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  color: #22364f;
+  cursor: pointer;
+}
+
+.jida-radio-row input {
+  width: auto !important;
+  margin: 0;
+}
+
+/* â”€â”€ Author's feedback on a reviewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-feedback-toggle {
+  border: 1px dashed #b7cdf0;
+  background: #f5f9ff;
+  color: #1d4d91;
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.45rem;
+}
+
+.jida-feedback-toggle:hover {
+  background: #edf5ff;
+}
+
+.jida-feedback {
+  border: 1px solid #b7cdf0;
+  border-radius: 10px;
+  background: #f5f9ff;
+  padding: 0.8rem 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.jida-feedback-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1d4d91;
+  margin-bottom: 0.55rem;
+}
+
+.jida-feedback-scale {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.jida-feedback-anchor {
+  font-size: 0.74rem;
+  color: #6a81a5;
+}
+
+.jida-feedback-dot {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid #b7cdf0;
+  background: #fff;
+  color: #1d4d91;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.jida-feedback-dot.active {
+  background: #1d4d91;
+  border-color: #1d4d91;
+  color: #fff;
+}
+
+.jida-feedback textarea {
+  width: 100%;
+  border: 1px solid #cfdcee;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.jida-feedback-msg {
+  font-size: 0.8rem;
+  color: #1d4d91;
+  margin-top: 0.45rem;
+}
+
+.jida-feedback-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* â”€â”€ Issue archive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.jida-issue-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.05);
+}
+
+.jida-issue-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 0.8rem;
+}
+
+.jida-issue-card-head h3 {
+  font-size: 1.1rem;
+  color: #10223d;
+  margin: 0;
+}
+
+.jida-issue-subtitle {
+  font-size: 0.9rem;
+  color: #345073;
+  margin-top: 0.2rem;
+}
+
+.jida-issue-meta {
+  font-size: 0.8rem;
+  color: #6a81a5;
+  margin-top: 0.3rem;
+}
+
+.jida-issue-contents {
+  list-style: none;
+  counter-reset: toc;
+  margin: 0.85rem 0 0;
+  padding: 0;
+}
+
+.jida-issue-contents li {
+  counter-increment: toc;
+  display: grid;
+  grid-template-columns: 1.8rem 1fr;
+  gap: 0.3rem 0.5rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px dotted #e2e8f0;
+}
+
+.jida-issue-contents li::before {
+  content: counter(toc) ".";
+  color: #6a81a5;
+  font-size: 0.85rem;
+  grid-row: span 2;
+}
+
+.jida-issue-article-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #1d4d91;
+  text-decoration: none;
+}
+
+.jida-issue-article-title:hover {
+  text-decoration: underline;
+}
+
+.jida-issue-article-authors {
+  font-size: 0.82rem;
+  font-style: italic;
+  color: #6a81a5;
+}
+
+.jida-issue-empty {
+  font-size: 0.86rem;
+  color: #8ea3c0;
+  padding: 0.85rem 0 0;
+}
+
+/* â”€â”€ Admin role controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-role-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.5rem;
+}
+
+.jida-role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+/* â”€â”€ Narrow screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+@media (max-width: 900px) {
+  .jida-track-card {
+    flex-direction: column;
+  }
+
+  .jida-track-actions {
+    border-left: none;
+    border-top: 1px solid #eef2f7;
+    padding-left: 0;
+    padding-top: 0.8rem;
+    min-width: 0;
+  }
+
+  /* The five rating columns cannot stay side by side, so each radio carries
+     its own label instead of relying on the (now hidden) column header. */
+  .jida-rating-head {
+    display: none;
+  }
+
+  .jida-rating-row {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    padding: 0.7rem 0;
+  }
+
+  .jida-rating-cell {
+    justify-content: flex-start !important;
+    gap: 0.5rem;
+  }
+
+  .jida-rating-mobile {
+    display: inline;
+    font-size: 0.8rem;
+    color: #345073;
+  }
+
+  /* Scrolls rather than hides: this is the only way a chief editor reaches
+     their other portals, so it has to survive a narrow screen. */
+  .jida-role-switcher {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .jida-role-switcher::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.jida-admin-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.jida-role-editor {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid #b7cdf0;
+  border-radius: 10px;
+  background: #f5f9ff;
+  padding: 0.75rem 0.85rem;
+  min-width: 18rem;
+}
+
+.jida-role-editor > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1d4d91;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Author hover cards, Google Scholar readiness
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* â”€â”€ Author hover card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-author-hover {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+  outline: none;
+}
+
+.jida-author-hover-name {
+  border-bottom: 1px dotted #8ea3c0;
+}
+
+.jida-author-card {
+  position: absolute;
+  bottom: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 14rem;
+  max-width: 22rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #cfdcee;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(16, 34, 61, 0.16);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #22364f;
+  text-align: left;
+  white-space: normal;
+}
+
+.jida-author-hover:hover .jida-author-card,
+.jida-author-hover:focus .jida-author-card,
+.jida-author-hover:focus-within .jida-author-card {
+  display: flex;
+}
+
+.jida-author-card strong {
+  color: #10223d;
+  font-size: 0.88rem;
+}
+
+.jida-author-card-email {
+  color: #1d4d91;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.jida-author-card-email:hover {
+  text-decoration: underline;
+}
+
+.jida-author-card-affiliation {
+  color: #6a81a5;
+}
+
+/* â”€â”€ Google Scholar readiness report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.jida-scholar-report {
+  border: 1px solid #e0b34d;
+  border-left: 4px solid #e0b34d;
+  border-radius: 10px;
+  background: #fffaf0;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.jida-scholar-report.ready {
+  border-color: #7fc49a;
+  border-left-color: #7fc49a;
+  background: #f4fbf7;
+}
+
+.jida-scholar-report-title {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #10223d;
+  margin-bottom: 0.5rem;
+}
+
+.jida-scholar-report h5 {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #6a81a5;
+  margin: 0.6rem 0 0.3rem;
+}
+
+.jida-scholar-report ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.jida-scholar-report li {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #22364f;
+}
+
+.jida-scholar-report li.blocker::marker {
+  color: #b3261e;
+}
+
+.jida-scholar-report li.warning::marker {
+  color: #9a6b12;
+}
+
+@media (max-width: 640px) {
+  /* Anchored left on narrow screens the card can overflow the viewport. */
+  .jida-author-card {
+    left: auto;
+    right: 0;
+    max-width: 15rem;
   }
 }

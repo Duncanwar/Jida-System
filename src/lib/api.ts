@@ -90,13 +90,37 @@ async function request<T>(
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
 
-export type Role = "AUTHOR" | "REVIEWER" | "EDITOR" | "ADMIN";
-export type UserRole = "AUTHOR" | "REVIEWER" | "EDITOR" | "ADMIN" ;
+export type Role =
+  | "AUTHOR"
+  | "REVIEWER"
+  | "EDITOR"
+  | "ADMIN"
+  | "CHIEF_EDITOR"
+  | "ASSOCIATE_EDITOR";
+export type UserRole = Role;
+
+/** Roles that reach the editor portal. Chief and associate editors share it. */
+export const EDITOR_ROLES: Role[] = ["EDITOR", "CHIEF_EDITOR", "ASSOCIATE_EDITOR"];
+
+export const ROLE_LABELS: Record<Role, string> = {
+  AUTHOR: "Author",
+  REVIEWER: "Reviewer",
+  EDITOR: "Editor",
+  ADMIN: "Admin",
+  CHIEF_EDITOR: "Chief Editor",
+  ASSOCIATE_EDITOR: "Associate Editor",
+};
 
 export interface AuthUser {
   id: string;
-  email: string;
+  /** Primary role — where the user lands after signing in. */
   role: Role;
+  /**
+   * Every role the account holds, already expanded by the server: a chief
+   * editor arrives with EDITOR, REVIEWER and AUTHOR included.
+   */
+  roles?: Role[];
+  email: string;
   firstName?: string | null;
   lastName?: string | null;
   emailVerified?: boolean;
@@ -267,8 +291,25 @@ export async function getManuscript(id: string) {
   return request<ManuscriptDetail>("GET", `/api/manuscripts/${id}`);
 }
 
-export async function submitManuscript(form: FormData) {
+/**
+ * `form` carries the file and the text fields. Co-authors go along as a JSON
+ * array in a single field, since the request is already multipart.
+ */
+export async function submitManuscript(form: FormData, coAuthors: CoAuthor[] = []) {
+  const filled = coAuthors.filter((c) => c.fullName.trim() && c.email.trim());
+  if (filled.length) form.set("coAuthors", JSON.stringify(filled));
   return request<{ id: string }>("POST", "/api/manuscripts", form, true);
+}
+
+/**
+ * "Authors' Feedback of Reviewer's Work to JIDA". Idempotent — an author can
+ * revise a rating they already gave.
+ */
+export async function saveReviewerFeedback(
+  reviewId: string,
+  data: { rating: number; comment?: string },
+) {
+  return request<ReviewerFeedback>("PUT", `/api/manuscripts/reviews/${reviewId}/feedback`, data);
 }
 
 export async function submitRevision(manuscriptId: string, form: FormData) {
@@ -285,21 +326,21 @@ export async function updateReviewProgress(assignmentId: string, progress: Revie
   return request("PATCH", `/api/reviewer/assignments/${assignmentId}/progress`, { progress });
 }
 
-export async function submitReview(
-  assignmentId: string,
-  data: {
-    commentsToAuthor: string;
-    commentsToEditor: string;
-    recommendation: ReviewRecommendation;
-    file?: File | null;
-  },
-) {
+/** Submits the completed JIDA Manuscript Review Form. */
+export async function submitReview(assignmentId: string, data: ReviewFormSubmission) {
   const form = new FormData();
-  form.set("commentsToAuthor", data.commentsToAuthor);
-  form.set("commentsToEditor", data.commentsToEditor);
+  for (const item of ASSESSMENT_ITEMS) form.set(item.key, data[item.key]);
   form.set("recommendation", data.recommendation);
+  form.set("commentsToAuthor", data.commentsToAuthor);
+  if (data.specificSuggestions) form.set("specificSuggestions", data.specificSuggestions);
+  if (data.commentsToEditor) form.set("commentsToEditor", data.commentsToEditor);
   if (data.file) form.set("file", data.file);
-  return request("POST", `/api/reviewer/assignments/${assignmentId}/review`, form, true);
+  return request<ReviewFormResult>(
+    "POST",
+    `/api/reviewer/assignments/${assignmentId}/review`,
+    form,
+    true,
+  );
 }
 
 export async function getReviewHistory() {
@@ -364,8 +405,38 @@ export async function publishToIssue(issueId: string, manuscriptId: string) {
   );
 }
 
+/** One thing standing between an article and Google Scholar. */
+export interface ScholarCheck {
+  id: string;
+  message: string;
+  severity: "blocker" | "warning";
+}
+
+export interface ScholarReadiness {
+  ready: boolean;
+  blockers: ScholarCheck[];
+  warnings: ScholarCheck[];
+}
+
+/**
+ * Marks an article for Google Scholar indexing. The server refuses when the
+ * article cannot actually be indexed and returns what is missing, so callers
+ * should be ready for a rejection carrying a `ScholarReadiness` body.
+ */
 export async function setScholarReady(publicationId: string, scholarReady: boolean) {
-  return request("PATCH", `/api/editor/publications/${publicationId}/scholar`, { scholarReady });
+  return request<ScholarReadiness & { id: string; scholarReady: boolean }>(
+    "PATCH",
+    `/api/editor/publications/${publicationId}/scholar`,
+    { scholarReady },
+  );
+}
+
+/** Checks an article against Scholar's requirements without changing anything. */
+export async function checkScholarReadiness(publicationId: string) {
+  return request<ScholarReadiness>(
+    "GET",
+    `/api/editor/publications/${publicationId}/scholar-check`,
+  );
 }
 
 export async function patchSettings(data: {
@@ -393,6 +464,7 @@ export async function getPublicArticle(slug: string) {
   return request<PublicArticle>("GET", `/api/public/articles/${slug}`);
 }
 
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 export type ManuscriptStatus =
@@ -414,6 +486,68 @@ export type ReviewRecommendation =
   | "MINOR_REVISION"
   | "MAJOR_REVISION"
   | "REJECT";
+
+// ─── Manuscript Review Form ────────────────────────────────────────────────
+
+export type ReviewRating = "EXCELLENT" | "GOOD" | "MODERATE" | "POOR" | "BAD";
+
+export const REVIEW_RATINGS: ReviewRating[] = ["EXCELLENT", "GOOD", "MODERATE", "POOR", "BAD"];
+
+/** The seven rated items of "Assessment of the article", in form order. */
+export const ASSESSMENT_ITEMS = [
+  { key: "ratingTitle", label: "The title is specific and reflects the main ideas of the article." },
+  { key: "ratingAbstract", label: "The abstract clearly presents objects, methods and results." },
+  {
+    key: "ratingLiterature",
+    label: "The literature review and significance of the article are explained clearly.",
+  },
+  { key: "ratingMethods", label: "The research study methods are sound and appropriate." },
+  {
+    key: "ratingConclusions",
+    label: "The conclusions or summary are accurate and supported by the content.",
+  },
+  { key: "ratingReferences", label: "References are up-dated, adequate and correctly cited." },
+  { key: "ratingStructure", label: "The structure is compact, sequential and logical." },
+] as const;
+
+export type AssessmentKey = (typeof ASSESSMENT_ITEMS)[number]["key"];
+
+/** The form's four "Overall Recommendation" levels, in its own wording. */
+export const RECOMMENDATION_LABELS: Record<ReviewRecommendation, string> = {
+  ACCEPT: "Accepted, no revision needed.",
+  MINOR_REVISION: "Accepted, minor revisions needed.",
+  MAJOR_REVISION: "Return for major revision and resubmission",
+  REJECT: "Reject",
+};
+
+/** A completed review form, as the reviewer who wrote it and editors see it. */
+export interface ReviewFormResult {
+  id: string;
+  recommendation: ReviewRecommendation;
+  recommendationLabel: string;
+  assessment: { key: AssessmentKey; label: string; rating: ReviewRating | null }[];
+  commentsToAuthor: string;
+  specificSuggestions?: string | null;
+  commentsToEditor?: string | null;
+  hasAttachment: boolean;
+  attachmentName?: string | null;
+  createdAt: string;
+}
+
+/** What the reviewer submits. Ratings are required; the rest follows the form. */
+export interface ReviewFormSubmission extends Record<AssessmentKey, ReviewRating> {
+  recommendation: ReviewRecommendation;
+  commentsToAuthor: string;
+  specificSuggestions?: string;
+  commentsToEditor?: string;
+  file?: File | null;
+}
+
+/** The author's "Feedback of Reviewer's Work to JIDA". */
+export interface ReviewerFeedback {
+  rating: number;
+  comment?: string | null;
+}
 
 export interface ManuscriptFileInfo {
   id: string;
@@ -439,11 +573,25 @@ export interface EditorialDecisionInfo {
  * an editorial decision has been recorded.
  */
 export interface AuthorVisibleReview {
+  /** Identifies the review when the author rates the reviewer's work. */
+  reviewId: string;
   /** "Reviewer 1", "Reviewer 2" — peer review is blind, so no name is sent. */
   reviewerLabel: string;
   recommendation: ReviewRecommendation;
+  /** "Comments and Suggestions to the Author(s)" — the overall evaluation. */
   commentsToAuthor: string;
+  /** The same section's reasons-and-suggestions prompt. */
+  specificSuggestions?: string | null;
   submittedAt: string;
+  /** The author's own rating of this review, once given. */
+  feedback?: ReviewerFeedback | null;
+}
+
+export interface CoAuthor {
+  fullName: string;
+  email: string;
+  affiliation?: string | null;
+  isCorresponding?: boolean;
 }
 
 export interface ManuscriptSummary {
@@ -457,6 +605,7 @@ export interface ManuscriptSummary {
   files?: ManuscriptFileInfo[];
   decisions?: EditorialDecisionInfo[];
   reviews?: AuthorVisibleReview[];
+  coAuthors?: CoAuthor[];
 }
 
 export interface ReviewerOption {
@@ -492,6 +641,12 @@ export interface Assignment {
   reviewedAt?: string;
   hasAttachment?: boolean;
   reviewer?: { id: string; name?: string; email: string };
+  /** When the manuscript was submitted — the review queue sorts on this. */
+  submittedAt?: string;
+  /** The completed review form. Present for the reviewer and for editors. */
+  review?: ReviewFormResult | null;
+  /** Editor-side only: the author's rating of this reviewer's work. */
+  authorFeedback?: ReviewerFeedback | null;
 }
 
 export interface EditorSubmission {
@@ -499,28 +654,89 @@ export interface EditorSubmission {
   title: string;
   status: ManuscriptStatus;
   authorName?: string;
+  /** Full contact details, for the author hover card. */
+  author?: { id: string; name?: string | null; email: string; affiliation?: string | null };
+  submittedAt?: string;
+  coAuthors?: CoAuthor[];
   assignments?: Assignment[];
   decisions?: EditorialDecisionInfo[];
 }
 
+/**
+ * A published article's author. The email is present because on published work
+ * the submitting author is the corresponding author.
+ */
+export interface PublicAuthor {
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  affiliation?: string | null;
+}
+
+export interface PublicCoAuthor {
+  fullName: string;
+  email?: string | null;
+  affiliation?: string | null;
+  isCorresponding?: boolean;
+}
+
+/** One article as it appears inside its issue in the archive. */
+export interface IssuePublication {
+  id: string;
+  slug: string;
+  publishedAt: string;
+  manuscript: {
+    title: string;
+    abstract?: string;
+    keywords?: string[];
+    author?: PublicAuthor | null;
+    coAuthors?: PublicCoAuthor[];
+  };
+}
+
+/**
+ * Mirrors the `Issue` row the API actually returns. The issue number is
+ * `issueNumber` and the article count arrives under Prisma's `_count`; naming
+ * them anything else here renders a blank in the archive.
+ */
 export interface PublicIssue {
   id: string;
   volume: number;
-  issue: number;
+  issueNumber: number;
   year: number;
-  publishedAt: string;
-  articleCount: number;
+  title?: string | null;
+  createdAt: string;
+  _count?: { publications: number };
+  publications?: IssuePublication[];
+}
+
+/** Article count for an issue, whichever shape the response carries. */
+export function issueArticleCount(issue: PublicIssue): number {
+  return issue._count?.publications ?? issue.publications?.length ?? 0;
+}
+
+/** "Volume 7, Issue 1, 2026" — the archive's canonical issue heading. */
+export function formatIssueTitle(issue: {
+  volume: number;
+  issueNumber: number;
+  year: number;
+}): string {
+  return `Volume ${issue.volume}, Issue ${issue.issueNumber}, ${issue.year}`;
 }
 
 export interface PublicArticle {
   id: string;
   slug: string;
   publishedAt: string;
+  scholarReady?: boolean;
   issue?: { volume: number; issueNumber: number; year: number; title?: string | null } | null;
   manuscript: {
     title: string;
+    abstract?: string;
     keywords?: string[];
-    author?: { firstName?: string | null; lastName?: string | null; affiliation?: string | null };
+    references?: string | null;
+    author?: PublicAuthor | null;
+    coAuthors?: PublicCoAuthor[];
   };
 }
 
@@ -528,6 +744,7 @@ export interface AdminUser {
   id: string;
   email: string;
   role: UserRole;
+  roles?: UserRole[];
   name?: string;
   institution?: string;
   createdAt?: string;
@@ -543,10 +760,20 @@ export async function adminCreateUser(data: {
   email: string;
   password: string;
   role: UserRole;
+  /** Every role to grant. Defaults to just the primary role server-side. */
+  roles?: UserRole[];
   name?: string;
   institution?: string;
 }) {
   return request<AdminUser>("POST", "/api/admin/users", data);
+}
+
+/** Changes the roles an existing account holds. */
+export async function adminUpdateUserRoles(
+  userId: string,
+  data: { role: UserRole; roles: UserRole[] },
+) {
+  return request<AdminUser>("PATCH", `/api/admin/users/${userId}/roles`, data);
 }
 
 export async function adminDeleteUser(userId: string) {
