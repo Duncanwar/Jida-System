@@ -2408,17 +2408,10 @@ export function AdminWorkspace() {
                   <tbody>
                     {users.map((u) => (
                       <tr key={u.id}>
-                        <td data-label="Name">
-                          <AuthorHover
-                            author={{
-                              name: u.name ?? null,
-                              email: u.email,
-                              affiliation: u.institution ?? null,
-                            }}
-                          >
-                            {u.name ?? "—"}
-                          </AuthorHover>
-                        </td>
+                        {/* Plain text: the directory already shows the email and
+                            institution in their own columns, so a hover card here
+                            would only obscure the name it covers. */}
+                        <td data-label="Name">{u.name ?? "—"}</td>
                         <td data-label="Email">{u.email}</td>
                         <td data-label="Roles">
                           <div className="jida-role-badges">
