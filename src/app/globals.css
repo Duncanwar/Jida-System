@@ -3348,3 +3348,409 @@ button.jida-password-toggle:hover {
     max-width: 15rem;
   }
 }
+
+/* ── Public nav: Home / Archive / Login+Register card ──────────────────── */
+
+.jida-header-nav > a {
+  color: #c8d6ec;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.jida-header-nav > a:hover,
+.jida-header-nav > a.active {
+  color: #fff;
+  background: #1e3a5f;
+}
+
+.jida-auth-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(215, 155, 43, 0.7);
+  border-radius: 7px;
+  overflow: hidden;
+  background: #d79b2b;
+}
+
+/* Higher-specificity selectors here beat the site-wide `.jida-header nav a`
+   pill button rule, which would otherwise give Login and Register their own
+   separate rounded pills instead of one shared card. */
+.jida-header-nav .jida-auth-group a {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.42rem 0.85rem;
+  color: #10223d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transform: none;
+  transition: background 0.2s;
+}
+
+.jida-header-nav .jida-auth-group a + a {
+  border-left: 1px solid rgba(16, 34, 61, 0.25);
+}
+
+.jida-header-nav .jida-auth-group a:hover {
+  border: 0;
+  background: #f0bb4f;
+  transform: none;
+}
+
+/* ── Landing page: search + advanced search ─────────────────────────────── */
+
+.jida-home-search {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 2.5rem;
+  align-items: center;
+  padding: 3rem max(2rem, 8vw);
+  background: #f4f7fb;
+  border-bottom: 1px solid #dce5f0;
+}
+
+.jida-home-search-copy h2,
+.jida-home-section-heading h2 {
+  margin-top: 0.35rem;
+  color: #10223d;
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  line-height: 1.15;
+}
+
+.jida-home-search-copy > p:last-child {
+  margin-top: 0.8rem;
+  color: #5a7194;
+  line-height: 1.6;
+}
+
+.jida-home-search-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.jida-home-search-form > label,
+.jida-home-advanced label,
+.jida-archive-filters label {
+  color: #263d5f;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jida-home-search-row {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.jida-home-search-row input,
+.jida-home-advanced input,
+.jida-archive-filters select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #fff;
+  color: #10223d;
+  padding: 0.65rem 0.8rem;
+  outline: none;
+}
+
+.jida-home-search-row input:focus,
+.jida-home-advanced input:focus,
+.jida-archive-filters select:focus {
+  border-color: #2e5fa4;
+  box-shadow: 0 0 0 3px rgba(46, 95, 164, 0.12);
+}
+
+.jida-home-search-row button {
+  min-width: 105px;
+  border: 0;
+  border-radius: 6px;
+  background: #2e5fa4;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.jida-home-search-row button:hover {
+  background: #214a82;
+}
+
+.jida-advanced-toggle,
+.jida-filter-clear {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #2e5fa4;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.2rem 0;
+}
+
+.jida-advanced-toggle:hover,
+.jida-filter-clear:hover {
+  text-decoration: underline;
+}
+
+.jida-home-advanced {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: 0.45rem;
+}
+
+/* ── Landing page: article and publication news ─────────────────────────── */
+
+.jida-home-news {
+  padding: 3.5rem max(2rem, 8vw);
+  background: #fff;
+}
+
+.jida-home-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1.5rem;
+  margin-bottom: 1.6rem;
+}
+
+.jida-home-section-heading > a {
+  color: #2e5fa4;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.jida-home-section-heading > a:hover {
+  text-decoration: underline;
+}
+
+.jida-home-news-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.jida-home-news-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 230px;
+  border-top: 3px solid #d79b2b;
+  background: #f8fbff;
+  padding: 1.25rem;
+}
+
+.jida-home-news-meta {
+  color: #6a81a5;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jida-home-news-card h3 {
+  margin-top: 0.75rem;
+  color: #10223d;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.jida-home-news-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.jida-home-news-card h3 a:hover {
+  color: #2e5fa4;
+}
+
+.jida-home-news-card > p:not(.jida-home-news-meta) {
+  margin-top: 0.65rem;
+  color: #5a7194;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-height: 1.5;
+}
+
+.jida-home-news-card time {
+  margin-top: auto;
+  padding-top: 1rem;
+  color: #6a81a5;
+  font-size: 0.78rem;
+}
+
+.jida-home-state {
+  color: #5a7194;
+  padding: 1rem 0;
+}
+
+.jida-home-state-error {
+  color: #952c35;
+}
+
+/* ── Archive: categorized browse (year / subject facets) ────────────────── */
+
+.jida-archive-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.jida-archive-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.jida-archive-sidebar {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.jida-archive-facet-group {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.06);
+}
+
+.jida-archive-facet-group h3 {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #10223d;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.jida-archive-facet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.1rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.jida-archive-facet-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  color: #345073;
+  font-size: 0.84rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.jida-archive-facet-item:hover {
+  background: #f0f4f9;
+}
+
+.jida-archive-facet-item.active {
+  background: #e5edf9;
+  color: #1d4d91;
+  font-weight: 700;
+}
+
+.jida-archive-facet-count {
+  color: #8ea3c0;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.jida-archive-facet-item.active .jida-archive-facet-count {
+  color: #2e5fa4;
+}
+
+.jida-archive-facet-empty {
+  color: #8ea3c0;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.5rem;
+}
+
+.jida-archive-main {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.jida-archive-year-group + .jida-archive-year-group {
+  margin-top: 1.5rem;
+}
+
+.jida-archive-year-heading {
+  color: #10223d;
+  font-size: 1rem;
+  font-weight: 800;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 2px solid #d79b2b;
+}
+
+@media (max-width: 768px) {
+  .jida-home-search {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 2.5rem 1.25rem;
+  }
+
+  .jida-home-news {
+    padding: 2.5rem 1.25rem;
+  }
+
+  .jida-home-section-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .jida-home-news-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-archive-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-archive-sidebar {
+    position: static;
+  }
+
+  .jida-auth-group a {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .jida-home-search-row {
+    flex-direction: column;
+  }
+
+  .jida-home-search-row button {
+    min-height: 42px;
+  }
+}
