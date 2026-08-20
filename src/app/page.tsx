@@ -1,18 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { AppHeader } from "@/features/jida/components";
-import { getPublicIssues, type PublicIssue } from "@/lib/api";
+import { getPublicArticles, getPublicIssues, type PublicArticle, type PublicIssue } from "@/lib/api";
 
 export default function Home() {
+  const router = useRouter();
   const [issues, setIssues] = useState<PublicIssue[]>([]);
+  const [articles, setArticles] = useState<PublicArticle[]>([]);
+  const [query, setQuery] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getPublicIssues()
-      .then(setIssues)
-      .catch(() => {});
+    Promise.all([getPublicIssues(), getPublicArticles()])
+      .then(([publicIssues, publicArticles]) => {
+        setIssues(publicIssues);
+        setArticles(publicArticles);
+      })
+      .catch(() => setError("Publication updates are temporarily unavailable."))
+      .finally(() => setLoading(false));
   }, []);
+
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (keyword) params.set("keyword", keyword);
+    router.push(`/archive${params.toString() ? `?${params}` : ""}`);
+  }
 
   // A volume can carry several issues, so the two counts differ: distinct
   // volume numbers, and issues published overall.
@@ -54,14 +74,81 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="jida-home-mission">
-        <p>
-          JIDA is committed to advancing rigorous, peer-reviewed academic
-          discourse across disciplines — connecting authors, reviewers, and
-          editors in a structured digital workflow.
-        </p>
-        <Link href="/signup">Register as Author</Link>
-      </div>
+      <section className="jida-home-search" aria-labelledby="home-search-title">
+        <div className="jida-home-search-copy">
+          <p className="jida-section-kicker">Research discovery</p>
+          <h2 id="home-search-title">Find research that moves the conversation forward</h2>
+          <p>Search published JIDA articles by title, author, or keyword.</p>
+        </div>
+        <form className="jida-home-search-form" onSubmit={handleSearch}>
+          <label htmlFor="home-article-search">Search the JIDA archive</label>
+          <div className="jida-home-search-row">
+            <input
+              id="home-article-search"
+              type="search"
+              placeholder="Search articles, authors, or topics"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <button type="submit">Search</button>
+          </div>
+          <button
+            type="button"
+            className="jida-advanced-toggle"
+            onClick={() => setShowAdvanced((visible) => !visible)}
+            aria-expanded={showAdvanced}
+          >
+            {showAdvanced ? "Hide advanced search" : "Advanced search"}
+          </button>
+          {showAdvanced && (
+            <div className="jida-home-advanced">
+              <label htmlFor="home-keyword-search">Keyword</label>
+              <input
+                id="home-keyword-search"
+                type="text"
+                placeholder="e.g. education, policy, technology"
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+            </div>
+          )}
+        </form>
+      </section>
+
+      <section className="jida-home-news" aria-labelledby="home-news-title">
+        <div className="jida-home-section-heading">
+          <div>
+            <p className="jida-section-kicker">From the archive</p>
+            <h2 id="home-news-title">Latest articles and publication news</h2>
+          </div>
+          <Link href="/archive">View all publications</Link>
+        </div>
+        {loading && <p className="jida-home-state">Loading publication updates...</p>}
+        {error && <p className="jida-home-state jida-home-state-error">{error}</p>}
+        {!loading && !error && articles.length === 0 && (
+          <p className="jida-home-state">New publications will appear here.</p>
+        )}
+        {!loading && !error && articles.length > 0 && (
+          <div className="jida-home-news-grid">
+            {articles
+              .slice()
+              .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+              .slice(0, 3)
+              .map((article) => (
+                <article key={article.id} className="jida-home-news-card">
+                  <p className="jida-home-news-meta">
+                    {article.issue ? `Volume ${article.issue.volume}, Issue ${article.issue.issueNumber}` : "JIDA publication"}
+                  </p>
+                  <h3><Link href={`/archive/${article.slug}`}>{article.manuscript.title}</Link></h3>
+                  <p>{article.manuscript.abstract || "Read the latest peer-reviewed research from JIDA."}</p>
+                  <time dateTime={article.publishedAt}>
+                    {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
+                  </time>
+                </article>
+              ))}
+          </div>
+        )}
+      </section>
 
       <section className="jida-contact">
         <div className="jida-contact-header">
