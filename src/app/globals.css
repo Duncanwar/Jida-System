@@ -3754,3 +3754,175 @@ button.jida-password-toggle:hover {
     min-height: 42px;
   }
 }
+
+/* ── Advanced search page ────────────────────────────────────────────────── */
+
+.jida-advsearch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.jida-advsearch-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 160px auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.jida-advsearch-connector {
+  display: flex;
+  align-items: center;
+}
+
+.jida-advsearch-connector span {
+  color: #5a7194;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.jida-advsearch-connector select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #f4f7fb;
+  color: #10223d;
+  font-weight: 700;
+  padding: 0 0.5rem;
+}
+
+.jida-advsearch-term,
+.jida-advsearch-field {
+  min-height: 42px;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #fff;
+  color: #10223d;
+  padding: 0.55rem 0.7rem;
+  outline: none;
+}
+
+.jida-advsearch-term:focus,
+.jida-advsearch-field:focus,
+.jida-advsearch-connector select:focus {
+  border-color: #2e5fa4;
+  box-shadow: 0 0 0 3px rgba(46, 95, 164, 0.12);
+}
+
+.jida-advsearch-remove {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #dbe4f0;
+  border-radius: 6px;
+  background: #f5f9ff;
+  color: #5a7194;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.jida-advsearch-remove:hover:not(:disabled) {
+  color: #952c35;
+  border-color: #f0b7bd;
+  background: #fdf1f2;
+}
+
+.jida-advsearch-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.jida-advsearch-addrow {
+  margin-top: 0.85rem;
+}
+
+.jida-advsearch-addrow:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.jida-advsearch-filters {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e3eaf3;
+}
+
+.jida-advsearch-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.jida-advsearch-filter-row label {
+  color: #263d5f;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.jida-advsearch-filter-row select {
+  min-width: 180px;
+  min-height: 40px;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #fff;
+  color: #10223d;
+  padding: 0.4rem 0.6rem;
+}
+
+.jida-advsearch-error {
+  margin-top: 1rem;
+  color: #952c35;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.jida-advsearch-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1.75rem;
+}
+
+.jida-advsearch-reset {
+  border: 0;
+  background: transparent;
+  color: #5a7194;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.jida-advsearch-reset:hover {
+  color: #10223d;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .jida-advsearch-row {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-advsearch-connector {
+    justify-content: flex-start;
+  }
+
+  .jida-advsearch-remove {
+    justify-self: start;
+  }
+
+  .jida-advsearch-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jida-advsearch-filter-row select {
+    min-width: 0;
+  }
+}

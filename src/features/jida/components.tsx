@@ -221,7 +221,11 @@ export function AppHeader() {
     router.push("/");
   }
 
-  const isPublicPage = pathname === "/" || pathname.startsWith("/archive");
+  const isPublicPage =
+    pathname === "/" ||
+    pathname.startsWith("/archive") ||
+    pathname === "/login" ||
+    pathname === "/signup";
   // The badge names the account's actual tier ("Chief Editor"), which is more
   // informative than the portal it happens to be viewing.
   const roleLabel = userRole ? (ROLE_LABELS[userRole as Role] ?? userRole) : null;
@@ -1943,15 +1947,17 @@ export function ArchiveWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const skipInitialSearch = useRef(true);
 
-  // Read ?q= and ?keyword= from the URL the homepage search hands off to,
-  // client-side only so this stays a plain component (no Suspense boundary
-  // for useSearchParams).
+  // Read ?q=, ?keyword= and ?year= from the URL — the homepage search and the
+  // advanced search page both hand off here. Client-side only so this stays
+  // a plain component (no Suspense boundary for useSearchParams).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     const kw = params.get("keyword");
+    const year = params.get("year");
     if (q) setQuery(q);
     if (kw) setKeyword(kw);
+    if (year && !Number.isNaN(Number(year))) setSelectedYear(Number(year));
   }, []);
 
   useEffect(() => {
@@ -2025,19 +2031,9 @@ export function ArchiveWorkspace() {
       {loading && <p style={{ padding: "1rem" }}>Loading…</p>}
       {error && <p style={{ padding: "1rem", color: "red" }}>{error}</p>}
 
-      <section className="jida-card">
-        <div className="jida-section-heading">
-          <div><p className="jida-section-kicker">Search</p><h2>Find Articles</h2></div>
-          <span className="jida-badge info">{issues.length} issues</span>
-        </div>
-        <input
-          className="jida-search jida-search-wide"
-          placeholder="Search by title, author, or keyword…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {hasActiveFilters && (
-          <div className="jida-archive-filters">
+      <div className="jida-archive-layout">
+        <aside className="jida-archive-sidebar" aria-label="Refine results">
+          {hasActiveFilters && (
             <button
               type="button"
               className="jida-filter-clear"
@@ -2049,12 +2045,8 @@ export function ArchiveWorkspace() {
             >
               Clear all filters
             </button>
-          </div>
-        )}
-      </section>
+          )}
 
-      <div className="jida-archive-layout">
-        <aside className="jida-archive-sidebar" aria-label="Refine results">
           <div className="jida-archive-facet-group">
             <h3>Browse by year</h3>
             <ul className="jida-archive-facet-list">
@@ -2169,61 +2161,213 @@ export function ArchiveWorkspace() {
               <p style={{ padding: "1rem" }}>No issues published yet.</p>
             )}
           </section>
-
-          <section className="jida-card">
-            <div className="jida-section-heading">
-              <div><p className="jida-section-kicker">Articles</p><h2>Published Articles</h2></div>
-              <span className="jida-badge">{articles.length} results</span>
-            </div>
-            <div className="jida-table-wrap">
-              <table className="jida-table">
-                <thead>
-                  <tr><th>Article</th><th>Author</th><th>Issue</th><th>Keywords</th><th>Review</th></tr>
-                </thead>
-                <tbody>
-                  {articles.map((a) => (
-                    <tr key={a.id}>
-                      <td data-label="Article">
-                        <Link href={`/archive/${a.slug}`}><strong>{a.manuscript.title}</strong></Link>
-                      </td>
-                      {/* Plain text, no hover card — this column lists names only. */}
-                      <td data-label="Author">
-                        {[
-                          [a.manuscript.author?.firstName, a.manuscript.author?.lastName]
-                            .filter(Boolean)
-                            .join(" "),
-                          ...(a.manuscript.coAuthors ?? []).map((c) => c.fullName),
-                        ]
-                          .filter(Boolean)
-                          .join(", ") || "—"}
-                      </td>
-                      <td data-label="Issue">{a.issue ? formatIssueTitle(a.issue) : "—"}</td>
-                      <td data-label="Keywords">{a.manuscript.keywords?.join(", ") ?? "—"}</td>
-                      <td data-label="Review">
-                        <button
-                          type="button"
-                          className="jida-badge info"
-                          style={{ cursor: "pointer", border: "none" }}
-                          onClick={() =>
-                            viewFile(`/api/public/articles/${a.slug}/download`).catch((e) =>
-                              alert(e instanceof Error ? e.message : "Failed to open article"),
-                            )
-                          }
-                        >
-                          Review
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {articles.length === 0 && !loading && (
-                    <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No published articles found.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
         </div>
       </div>
+    </section>
+  );
+}
+
+// ─── AdvancedSearchWorkspace ───────────────────────────────────────────────
+
+type AdvancedSearchField = "any" | "title" | "author" | "abstract" | "keyword";
+
+const ADVANCED_SEARCH_FIELDS: { value: AdvancedSearchField; label: string }[] = [
+  { value: "any", label: "Anywhere" },
+  { value: "title", label: "Article title" },
+  { value: "author", label: "Author" },
+  { value: "abstract", label: "Abstract" },
+  { value: "keyword", label: "Keywords" },
+];
+
+interface AdvancedSearchRow {
+  id: string;
+  connector: "AND" | "OR" | "NOT";
+  field: AdvancedSearchField;
+  term: string;
+}
+
+let advancedSearchRowSeq = 0;
+function newAdvancedSearchRow(): AdvancedSearchRow {
+  advancedSearchRowSeq += 1;
+  return { id: `row-${advancedSearchRowSeq}`, connector: "AND", field: "any", term: "" };
+}
+
+const MAX_ADVANCED_SEARCH_ROWS = 5;
+
+export function AdvancedSearchWorkspace() {
+  const router = useRouter();
+  const [rows, setRows] = useState<AdvancedSearchRow[]>(() => [newAdvancedSearchRow()]);
+  const [year, setYear] = useState("");
+  const [years, setYears] = useState<number[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPublicIssues()
+      .then((issues) => {
+        setYears(Array.from(new Set(issues.map((i) => i.year))).sort((a, b) => b - a));
+      })
+      .catch(() => {
+        /* Year filter is a nicety — leave it empty if issues can't load. */
+      });
+  }, []);
+
+  function updateRow(id: string, patch: Partial<AdvancedSearchRow>) {
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  }
+
+  function addRow() {
+    setRows((current) =>
+      current.length < MAX_ADVANCED_SEARCH_ROWS ? [...current, newAdvancedSearchRow()] : current,
+    );
+  }
+
+  function removeRow(id: string) {
+    setRows((current) => (current.length > 1 ? current.filter((row) => row.id !== id) : current));
+  }
+
+  function resetForm() {
+    setRows([newAdvancedSearchRow()]);
+    setYear("");
+    setFormError(null);
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const filled = rows.filter((row) => row.term.trim());
+    if (filled.length === 0 && !year) {
+      setFormError("Enter at least one search term, or choose a publication year.");
+      return;
+    }
+    setFormError(null);
+
+    // The API only understands a free-text query plus one keyword filter —
+    // richer than that, so terms scoped to "Keywords" become the keyword
+    // filter and everything else is folded into the free-text query. Boolean
+    // connectors shape how the terms read here but degrade to a single
+    // combined query, since there's no boolean search on the backend.
+    const keywordRow = filled.find((row) => row.field === "keyword");
+    const queryTerms = filled.filter((row) => row.field !== "keyword").map((row) => row.term.trim());
+
+    const params = new URLSearchParams();
+    if (queryTerms.length > 0) params.set("q", queryTerms.join(" "));
+    if (keywordRow) params.set("keyword", keywordRow.term.trim());
+    if (year) params.set("year", year);
+
+    router.push(`/archive${params.toString() ? `?${params}` : ""}`);
+  }
+
+  return (
+    <section className="jida-workspace">
+      <div className="jida-page-title">
+        <div>
+          <p className="jida-section-kicker">Public Archive</p>
+          <h2>Advanced Search</h2>
+          <p>
+            Combine multiple search terms and filters to find exactly what you&apos;re
+            looking for in the JIDA digital archive.
+          </p>
+        </div>
+      </div>
+
+      <form className="jida-card jida-advsearch" onSubmit={handleSubmit}>
+        <div className="jida-section-heading">
+          <div>
+            <p className="jida-section-kicker">Search terms</p>
+            <h2>Find articles</h2>
+          </div>
+        </div>
+
+        <div className="jida-advsearch-rows">
+          {rows.map((row, index) => (
+            <div className="jida-advsearch-row" key={row.id}>
+              <div className="jida-advsearch-connector">
+                {index === 0 ? (
+                  <span>Search for</span>
+                ) : (
+                  <select
+                    aria-label="Combine with"
+                    value={row.connector}
+                    onChange={(e) => updateRow(row.id, { connector: e.target.value as AdvancedSearchRow["connector"] })}
+                  >
+                    <option value="AND">AND</option>
+                    <option value="OR">OR</option>
+                    <option value="NOT">NOT</option>
+                  </select>
+                )}
+              </div>
+
+              <input
+                type="text"
+                className="jida-advsearch-term"
+                aria-label="Search term"
+                placeholder="e.g. sociolinguistics, Kayigema, teaching methods…"
+                value={row.term}
+                onChange={(e) => updateRow(row.id, { term: e.target.value })}
+              />
+
+              <select
+                className="jida-advsearch-field"
+                aria-label="Search in"
+                value={row.field}
+                onChange={(e) => updateRow(row.id, { field: e.target.value as AdvancedSearchField })}
+              >
+                {ADVANCED_SEARCH_FIELDS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                className="jida-advsearch-remove"
+                onClick={() => removeRow(row.id)}
+                disabled={rows.length === 1}
+                aria-label="Remove search term"
+                title="Remove search term"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="jida-advanced-toggle jida-advsearch-addrow"
+          onClick={addRow}
+          disabled={rows.length >= MAX_ADVANCED_SEARCH_ROWS}
+        >
+          + Add another search term
+        </button>
+
+        <div className="jida-advsearch-filters">
+          <p className="jida-section-kicker">Refine by</p>
+          <div className="jida-advsearch-filter-row">
+            <label htmlFor="advsearch-year">Publication year</label>
+            <select id="advsearch-year" value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="">Any year</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {formError && <p className="jida-advsearch-error" role="alert">{formError}</p>}
+
+        <div className="jida-advsearch-actions">
+          <button type="submit" className="jida-btn-primary">
+            Search
+          </button>
+          <button type="button" className="jida-advsearch-reset" onClick={resetForm}>
+            Reset form
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

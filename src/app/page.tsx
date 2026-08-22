@@ -11,8 +11,6 @@ export default function Home() {
   const [issues, setIssues] = useState<PublicIssue[]>([]);
   const [articles, setArticles] = useState<PublicArticle[]>([]);
   const [query, setQuery] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +28,6 @@ export default function Home() {
     event.preventDefault();
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    if (keyword) params.set("keyword", keyword);
     router.push(`/archive${params.toString() ? `?${params}` : ""}`);
   }
 
@@ -56,10 +53,6 @@ export default function Home() {
             structured editorial review, revision tracking, and publication —
             built for authors, reviewers, and editors.
           </p>
-          <div className="jida-home-actions">
-            <Link href="/login">Sign In</Link>
-            <Link href="/archive">Browse Archive</Link>
-          </div>
         </div>
 
         <div className="jida-home-hero-stats" aria-label="Platform statistics">
@@ -92,26 +85,9 @@ export default function Home() {
             />
             <button type="submit">Search</button>
           </div>
-          <button
-            type="button"
-            className="jida-advanced-toggle"
-            onClick={() => setShowAdvanced((visible) => !visible)}
-            aria-expanded={showAdvanced}
-          >
-            {showAdvanced ? "Hide advanced search" : "Advanced search"}
-          </button>
-          {showAdvanced && (
-            <div className="jida-home-advanced">
-              <label htmlFor="home-keyword-search">Keyword</label>
-              <input
-                id="home-keyword-search"
-                type="text"
-                placeholder="e.g. education, policy, technology"
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-              />
-            </div>
-          )}
+          <Link href="/archive/advanced-search" className="jida-advanced-toggle">
+            Advanced search
+          </Link>
         </form>
       </section>
 
