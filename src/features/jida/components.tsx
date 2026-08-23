@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings, X, User } from "lucide-react";
+import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   getManuscripts,
@@ -453,11 +453,13 @@ function PublicAuthorLine({
 
   if (entries.length === 0) return <>—</>;
 
+  // Two or more authors get an ampersand before the last name, not another
+  // comma — "Smith, Doe & Lee" rather than "Smith, Doe, Lee".
   return (
     <>
       {entries.map((entry, i) => (
         <Fragment key={entry.key}>
-          {i > 0 && ", "}
+          {i > 0 && (i === entries.length - 1 ? " & " : ", ")}
           <AuthorHover author={entry.hover}>{entry.name}</AuthorHover>
         </Fragment>
       ))}
@@ -1937,28 +1939,23 @@ export function EditorWorkspace() {
 
 // ─── ArchiveWorkspace ──────────────────────────────────────────────────────
 
+const ARCHIVE_AZ_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
 export function ArchiveWorkspace() {
   const [issues, setIssues] = useState<PublicIssue[]>([]);
   const [articles, setArticles] = useState<PublicArticle[]>([]);
-  const [query, setQuery] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const skipInitialSearch = useRef(true);
+  const [openYear, setOpenYear] = useState<number | null>(null);
+  const [openIssueId, setOpenIssueId] = useState<string | null>(null);
 
-  // Read ?q=, ?keyword= and ?year= from the URL — the homepage search and the
-  // advanced search page both hand off here. Client-side only so this stays
-  // a plain component (no Suspense boundary for useSearchParams).
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q");
-    const kw = params.get("keyword");
-    const year = params.get("year");
-    if (q) setQuery(q);
-    if (kw) setKeyword(kw);
-    if (year && !Number.isNaN(Number(year))) setSelectedYear(Number(year));
-  }, []);
+  // Filter bar state, borrowed from Taylor & Francis's subject listing page.
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchField, setSearchField] = useState<AdvancedSearchField>("any");
+  const [letter, setLetter] = useState<string | null>(null);
+  const [subject, setSubject] = useState("");
+  const [year, setYear] = useState("");
+  const skipInitialSearch = useRef(true);
 
   useEffect(() => {
     (async () => {
@@ -1974,6 +1971,9 @@ export function ArchiveWorkspace() {
     })();
   }, []);
 
+  // The free-text box re-queries the backend (title/author/abstract fold
+  // into `q`; "Keywords" becomes the `keyword` filter) — same split used on
+  // the advanced search page, since that's what the API actually supports.
   useEffect(() => {
     if (skipInitialSearch.current) {
       skipInitialSearch.current = false;
@@ -1981,188 +1981,236 @@ export function ArchiveWorkspace() {
     }
     const t = setTimeout(async () => {
       try {
-        setArticles(await getPublicArticles(query || undefined, keyword || undefined));
-      } catch { /* ignore */ }
+        const q = searchTerm.trim();
+        const isKeyword = searchField === "keyword";
+        setArticles(await getPublicArticles(!isKeyword ? q || undefined : undefined, isKeyword ? q || undefined : undefined));
+      } catch {
+        /* ignore */
+      }
     }, 400);
     return () => clearTimeout(t);
-  }, [query, keyword]);
+  }, [searchTerm, searchField]);
 
-  // Facet counts, ScienceDirect-style: how many articles carry each subject,
-  // and how many issues fall in each year — computed from what's loaded so
-  // the sidebar narrows as filters are applied.
-  const subjectCounts = new Map<string, number>();
-  for (const article of articles) {
-    for (const subject of article.manuscript.keywords ?? []) {
-      subjectCounts.set(subject, (subjectCounts.get(subject) ?? 0) + 1);
-    }
-  }
-  const subjects = Array.from(subjectCounts.keys()).sort((a, b) => a.localeCompare(b));
-
-  const yearCounts = new Map<number, number>();
-  for (const issue of issues) {
-    yearCounts.set(issue.year, (yearCounts.get(issue.year) ?? 0) + 1);
-  }
-  const years = Array.from(yearCounts.keys()).sort((a, b) => b - a);
-
-  const visibleIssues = selectedYear ? issues.filter((issue) => issue.year === selectedYear) : issues;
-
-  // Group issues under a year heading, newest year first, mirroring how
-  // ScienceDirect's "Volumes and issues" page is organized.
+  // Group issues under a year, newest year first — the top level of the
+  // year accordion below.
   const issuesByYear = new Map<number, PublicIssue[]>();
-  for (const issue of visibleIssues) {
+  for (const issue of issues) {
     const bucket = issuesByYear.get(issue.year) ?? [];
     bucket.push(issue);
     issuesByYear.set(issue.year, bucket);
   }
   const orderedYears = Array.from(issuesByYear.keys()).sort((a, b) => b - a);
 
-  const hasActiveFilters = query || keyword || selectedYear;
+  const availableLetters = new Set(
+    articles.map((a) => a.manuscript.title.trim()[0]?.toUpperCase()).filter((c) => c && /[A-Z]/.test(c)),
+  );
+  const subjects = Array.from(
+    new Set(articles.flatMap((a) => a.manuscript.keywords ?? [])),
+  ).sort((x, y) => x.localeCompare(y));
+  const years = Array.from(new Set(issues.map((i) => i.year))).sort((a, b) => b - a);
+
+  const filteredArticles = articles.filter((a) => {
+    if (letter && a.manuscript.title.trim()[0]?.toUpperCase() !== letter) return false;
+    if (subject && !(a.manuscript.keywords ?? []).includes(subject)) return false;
+    if (year && a.issue?.year !== Number(year)) return false;
+    return true;
+  });
+
+  const hasActiveFilters = Boolean(searchTerm.trim() || letter || subject || year);
+
+  function clearAllFilters() {
+    setSearchTerm("");
+    setSearchField("any");
+    setLetter(null);
+    setSubject("");
+    setYear("");
+  }
 
   return (
     <section className="jida-workspace">
-      <div className="jida-page-title">
+      <div className="jida-archive-header">
         <div>
           <p className="jida-section-kicker">Public Archive</p>
-          <h2>Discover published research</h2>
-          <p>Browse journal issues and search published articles from the JIDA digital archive.</p>
+          <h1>Archives</h1>
+          <p>Browse JIDA&apos;s published volumes and issues by year, or search and filter below.</p>
         </div>
       </div>
 
       {loading && <p style={{ padding: "1rem" }}>Loading…</p>}
       {error && <p style={{ padding: "1rem", color: "red" }}>{error}</p>}
 
-      <div className="jida-archive-layout">
-        <aside className="jida-archive-sidebar" aria-label="Refine results">
+      <section className="jida-card jida-archive-filterbar">
+        <form
+          className="jida-archive-filter-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSearchTerm((v) => v.trim());
+          }}
+        >
+          <input
+            type="search"
+            placeholder="Search articles and special issues…"
+            aria-label="Search the archive"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select
+            aria-label="Search in"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value as AdvancedSearchField)}
+          >
+            {ADVANCED_SEARCH_FIELDS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <button type="submit">
+            <Search size={15} />
+            Search
+          </button>
+        </form>
+
+        <div className="jida-archive-az">
+          <span className="jida-archive-az-label">Browse A—Z</span>
+          <div className="jida-archive-az-list">
+            {ARCHIVE_AZ_LETTERS.map((l) => (
+              <button
+                key={l}
+                type="button"
+                className={`jida-archive-az-letter${letter === l ? " active" : ""}`}
+                disabled={!availableLetters.has(l)}
+                onClick={() => setLetter((current) => (current === l ? null : l))}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="jida-archive-filter-row">
+          <label>
+            Subject
+            <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+              <option value="">All subjects</option>
+              {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label>
+            Publication date
+            <select value={year} onChange={(e) => setYear(e.target.value)}>
+              <option value="">Any year</option>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </label>
           {hasActiveFilters && (
-            <button
-              type="button"
-              className="jida-filter-clear"
-              onClick={() => {
-                setQuery("");
-                setKeyword("");
-                setSelectedYear(null);
-              }}
-            >
+            <button type="button" className="jida-filter-clear" onClick={clearAllFilters}>
               Clear all filters
             </button>
           )}
+        </div>
+      </section>
 
-          <div className="jida-archive-facet-group">
-            <h3>Browse by year</h3>
-            <ul className="jida-archive-facet-list">
-              <li>
-                <button
-                  type="button"
-                  className={`jida-archive-facet-item${selectedYear === null ? " active" : ""}`}
-                  onClick={() => setSelectedYear(null)}
-                >
-                  <span>All years</span>
-                  <span className="jida-archive-facet-count">{issues.length}</span>
-                </button>
-              </li>
-              {years.map((year) => (
-                <li key={year}>
-                  <button
-                    type="button"
-                    className={`jida-archive-facet-item${selectedYear === year ? " active" : ""}`}
-                    onClick={() => setSelectedYear((current) => (current === year ? null : year))}
-                  >
-                    <span>{year}</span>
-                    <span className="jida-archive-facet-count">{yearCounts.get(year)}</span>
-                  </button>
-                </li>
-              ))}
-              {years.length === 0 && <li className="jida-archive-facet-empty">No issues yet</li>}
-            </ul>
+      {hasActiveFilters ? (
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">Results</p><h2>Articles &amp; special issues</h2></div>
+            <span className="jida-badge info">{filteredArticles.length} results</span>
           </div>
-
-          <div className="jida-archive-facet-group">
-            <h3>Browse by subject</h3>
-            <ul className="jida-archive-facet-list">
-              <li>
-                <button
-                  type="button"
-                  className={`jida-archive-facet-item${keyword === "" ? " active" : ""}`}
-                  onClick={() => setKeyword("")}
-                >
-                  <span>All subjects</span>
-                  <span className="jida-archive-facet-count">{articles.length}</span>
-                </button>
+          <ul className="jida-archive-results-list">
+            {filteredArticles.map((a) => (
+              <li key={a.id}>
+                <span className="jida-archive-result-type">Research Article</span>
+                <Link href={`/archive/${a.slug}`} className="jida-archive-result-title">
+                  {a.manuscript.title}
+                </Link>
+                <p className="jida-archive-result-authors">
+                  <PublicAuthorLine author={a.manuscript.author} coAuthors={a.manuscript.coAuthors} />
+                </p>
+                <time className="jida-archive-result-date" dateTime={a.publishedAt}>
+                  Published Online: {a.publishedAt.slice(0, 10)}
+                </time>
               </li>
-              {subjects.map((subject) => (
-                <li key={subject}>
-                  <button
-                    type="button"
-                    className={`jida-archive-facet-item${keyword === subject ? " active" : ""}`}
-                    onClick={() => setKeyword((current) => (current === subject ? "" : subject))}
-                  >
-                    <span>{subject}</span>
-                    <span className="jida-archive-facet-count">{subjectCounts.get(subject)}</span>
-                  </button>
-                </li>
-              ))}
-              {subjects.length === 0 && <li className="jida-archive-facet-empty">No subjects yet</li>}
-            </ul>
-          </div>
-        </aside>
+            ))}
+            {filteredArticles.length === 0 && !loading && (
+              <li className="jida-archive-result-empty">No articles match your search and filters.</li>
+            )}
+          </ul>
+        </section>
+      ) : (
+      <div className="jida-archive-accordion" role="tablist">
+        {orderedYears.map((year) => {
+          const isYearOpen = openYear === year;
+          return (
+            <div key={year} className={`jida-archive-accordion-item${isYearOpen ? " open" : ""}`}>
+              <button
+                type="button"
+                className="jida-archive-accordion-trigger"
+                onClick={() => {
+                  setOpenYear((current) => (current === year ? null : year));
+                  setOpenIssueId(null);
+                }}
+                aria-expanded={isYearOpen}
+              >
+                {isYearOpen ? <Minus size={16} /> : <Plus size={16} />}
+                <span>{year}</span>
+              </button>
 
-        {/* Issues, grouped by year and each listing everything published in it. */}
-        <div className="jida-archive-main">
-          <section className="jida-card">
-            <div className="jida-section-heading">
-              <div><p className="jida-section-kicker">Issues</p><h2>Journal Issues</h2></div>
-              <span className="jida-badge info">{visibleIssues.length} issues</span>
-            </div>
-
-            {orderedYears.map((year) => (
-              <div key={year} className="jida-archive-year-group">
-                <h3 className="jida-archive-year-heading">{year}</h3>
-                <div className="jida-issue-list">
+              {isYearOpen && (
+                <div className="jida-archive-accordion-panel">
                   {(issuesByYear.get(year) ?? []).map((issue) => {
+                    const isIssueOpen = openIssueId === issue.id;
                     const count = issueArticleCount(issue);
                     return (
-                      <article key={issue.id} className="jida-issue-card">
-                        <header className="jida-issue-card-head">
-                          <div>
-                            <h3>{formatIssueTitle(issue)}</h3>
-                            {issue.title && <p className="jida-issue-subtitle">{issue.title}</p>}
-                            <p className="jida-issue-meta">
-                              {count} article{count === 1 ? "" : "s"}
-                            </p>
-                          </div>
-                        </header>
+                      <div key={issue.id} className="jida-archive-issue-row">
+                        <button
+                          type="button"
+                          className="jida-archive-issue-trigger"
+                          onClick={() => setOpenIssueId((current) => (current === issue.id ? null : issue.id))}
+                          aria-expanded={isIssueOpen}
+                        >
+                          {isIssueOpen ? <Minus size={13} /> : <Plus size={13} />}
+                          <span>{formatIssueTitle(issue)}</span>
+                          <span className="jida-archive-issue-count">
+                            {count} article{count === 1 ? "" : "s"}
+                          </span>
+                        </button>
 
-                        {issue.publications && issue.publications.length > 0 ? (
-                          <ol className="jida-issue-contents">
-                            {issue.publications.map((pub) => (
-                              <li key={pub.id}>
-                                <Link href={`/archive/${pub.slug}`} className="jida-issue-article-title">
-                                  {pub.manuscript.title}
-                                </Link>
-                                <span className="jida-issue-article-authors">
-                                  <PublicAuthorLine
-                                    author={pub.manuscript.author}
-                                    coAuthors={pub.manuscript.coAuthors}
-                                  />
-                                </span>
-                              </li>
-                            ))}
-                          </ol>
-                        ) : (
-                          <p className="jida-issue-empty">No articles in this issue yet.</p>
+                        {isIssueOpen && (
+                          issue.publications && issue.publications.length > 0 ? (
+                            <ol className="jida-issue-contents">
+                              {issue.publications.map((pub) => (
+                                <li key={pub.id}>
+                                  <Link href={`/archive/${pub.slug}`} className="jida-issue-article-title">
+                                    {pub.manuscript.title}
+                                  </Link>
+                                  <span className="jida-issue-article-authors">
+                                    <PublicAuthorLine
+                                      author={pub.manuscript.author}
+                                      coAuthors={pub.manuscript.coAuthors}
+                                    />
+                                  </span>
+                                  <time className="jida-issue-article-date" dateTime={pub.publishedAt}>
+                                    Published Online: {pub.publishedAt.slice(0, 10)}
+                                  </time>
+                                </li>
+                              ))}
+                            </ol>
+                          ) : (
+                            <p className="jida-issue-empty">No articles in this issue yet.</p>
+                          )
                         )}
-                      </article>
+                      </div>
                     );
                   })}
                 </div>
-              </div>
-            ))}
-            {visibleIssues.length === 0 && !loading && (
-              <p style={{ padding: "1rem" }}>No issues published yet.</p>
-            )}
-          </section>
-        </div>
+              )}
+            </div>
+          );
+        })}
+        {orderedYears.length === 0 && !loading && (
+          <p style={{ padding: "1rem" }}>No issues published yet.</p>
+        )}
       </div>
+      )}
     </section>
   );
 }
@@ -2194,20 +2242,75 @@ function newAdvancedSearchRow(): AdvancedSearchRow {
 
 const MAX_ADVANCED_SEARCH_ROWS = 5;
 
+/** Issues whose formatted title (or free title) mentions one of the search
+ * terms, scoped to a publication year when one is chosen. A year alone (no
+ * terms) surfaces every issue in that year. */
+function matchIssues(allIssues: PublicIssue[], terms: string[], yr: string): PublicIssue[] {
+  return allIssues.filter((issue) => {
+    if (yr && issue.year !== Number(yr)) return false;
+    if (terms.length === 0) return Boolean(yr);
+    const haystack = `${formatIssueTitle(issue)} ${issue.title ?? ""}`.toLowerCase();
+    return terms.some((term) => haystack.includes(term.toLowerCase()));
+  });
+}
+
 export function AdvancedSearchWorkspace() {
-  const router = useRouter();
   const [rows, setRows] = useState<AdvancedSearchRow[]>(() => [newAdvancedSearchRow()]);
   const [year, setYear] = useState("");
   const [years, setYears] = useState<number[]>([]);
+  const [allIssues, setAllIssues] = useState<PublicIssue[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [results, setResults] = useState<PublicArticle[]>([]);
+  const [matchedIssues, setMatchedIssues] = useState<PublicIssue[]>([]);
+  const [searching, setSearching] = useState(false);
 
+  async function runSearch(
+    queryTerms: string[],
+    keywordTerm: string | undefined,
+    yr: string,
+    allTerms: string[],
+    issuesList: PublicIssue[],
+  ) {
+    setSearching(true);
+    try {
+      let articles = await getPublicArticles(queryTerms.join(" ") || undefined, keywordTerm);
+      if (yr) articles = articles.filter((a) => a.issue?.year === Number(yr));
+      setResults(articles);
+      setMatchedIssues(matchIssues(issuesList, allTerms, yr));
+    } catch {
+      setResults([]);
+      setMatchedIssues([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  // Load every issue (for the year filter and for matching issues by
+  // title/volume), then — if the homepage search or the archive's search
+  // shortcut handed off a query via the URL — prefill the form and run it
+  // immediately so results show up without a second click.
   useEffect(() => {
     getPublicIssues()
       .then((issues) => {
+        setAllIssues(issues);
         setYears(Array.from(new Set(issues.map((i) => i.year))).sort((a, b) => b - a));
+
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get("q") ?? "";
+        const kw = params.get("keyword") ?? "";
+        const yr = params.get("year") ?? "";
+        if (!q && !kw && !yr) return;
+
+        const initialRows: AdvancedSearchRow[] = [];
+        if (q) initialRows.push({ ...newAdvancedSearchRow(), term: q, field: "any" });
+        if (kw) initialRows.push({ ...newAdvancedSearchRow(), term: kw, field: "keyword" });
+        if (initialRows.length > 0) setRows(initialRows);
+        if (yr) setYear(yr);
+
+        runSearch(q ? [q] : [], kw || undefined, yr, [q, kw].filter(Boolean), issues);
       })
       .catch(() => {
-        /* Year filter is a nicety — leave it empty if issues can't load. */
+        /* Year filter and prefill are a nicety — leave the form empty if issues can't load. */
       });
   }, []);
 
@@ -2229,6 +2332,8 @@ export function AdvancedSearchWorkspace() {
     setRows([newAdvancedSearchRow()]);
     setYear("");
     setFormError(null);
+    setResults([]);
+    setMatchedIssues([]);
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -2248,14 +2353,12 @@ export function AdvancedSearchWorkspace() {
     // combined query, since there's no boolean search on the backend.
     const keywordRow = filled.find((row) => row.field === "keyword");
     const queryTerms = filled.filter((row) => row.field !== "keyword").map((row) => row.term.trim());
+    const allTerms = filled.map((row) => row.term.trim());
 
-    const params = new URLSearchParams();
-    if (queryTerms.length > 0) params.set("q", queryTerms.join(" "));
-    if (keywordRow) params.set("keyword", keywordRow.term.trim());
-    if (year) params.set("year", year);
-
-    router.push(`/archive${params.toString() ? `?${params}` : ""}`);
+    runSearch(queryTerms, keywordRow?.term.trim(), year, allTerms, allIssues);
   }
+
+  const resultCount = results.length + matchedIssues.length;
 
   return (
     <section className="jida-workspace">
@@ -2368,6 +2471,65 @@ export function AdvancedSearchWorkspace() {
           </button>
         </div>
       </form>
+
+      <section className="jida-card jida-advsearch-results" aria-live="polite">
+        <div className="jida-section-heading">
+          <div>
+            <p className="jida-section-kicker">Results</p>
+            <h2>Search results</h2>
+          </div>
+          {resultCount > 0 && <span className="jida-badge info">{resultCount} found</span>}
+        </div>
+
+        {searching ? (
+          <p className="jida-home-state">Searching…</p>
+        ) : resultCount === 0 ? (
+          <p className="jida-advsearch-noresult">No result.</p>
+        ) : (
+          <>
+            {matchedIssues.length > 0 && (
+              <div className="jida-advsearch-result-group">
+                <h3>Issues</h3>
+                <ul className="jida-advsearch-issue-list">
+                  {matchedIssues.map((issue) => {
+                    const count = issueArticleCount(issue);
+                    return (
+                      <li key={issue.id}>
+                        <span className="jida-advsearch-issue-title">{formatIssueTitle(issue)}</span>
+                        <span className="jida-archive-issue-count">
+                          {count} article{count === 1 ? "" : "s"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {results.length > 0 && (
+              <div className="jida-advsearch-result-group">
+                <h3>Articles</h3>
+                <ol className="jida-issue-contents">
+                  {results.map((article) => (
+                    <li key={article.id}>
+                      <Link href={`/archive/${article.slug}`} className="jida-issue-article-title">
+                        {article.manuscript.title}
+                      </Link>
+                      <span className="jida-issue-article-authors">
+                        <PublicAuthorLine
+                          author={article.manuscript.author}
+                          coAuthors={article.manuscript.coAuthors}
+                        />
+                        {article.issue ? ` — ${formatIssueTitle(article.issue)}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </section>
   );
 }
@@ -2376,15 +2538,63 @@ export function ReviewArticleButton({ slug }: { slug: string }) {
   return (
     <button
       type="button"
-      className="jida-btn-primary"
+      className="jida-btn-primary jida-article-pdf-btn"
       onClick={() =>
         viewFile(`/api/public/articles/${slug}/download`).catch((e) =>
           alert(e instanceof Error ? e.message : "Failed to open article"),
         )
       }
     >
-      Review article
+      View PDF
     </button>
+  );
+}
+
+/** "Cite this article" and "Copy link" — the two clipboard actions on an
+ * article page's byline row, borrowed from Taylor & Francis Online's
+ * article header. `citation` and `url` are built server-side from real
+ * article fields, never fabricated. */
+export function ArticleCiteShare({ citation, url }: { citation: string; url: string }) {
+  const [showCite, setShowCite] = useState(false);
+  const [copied, setCopied] = useState<"cite" | "link" | null>(null);
+
+  async function copy(text: string, which: "cite" | "link") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied((current) => (current === which ? null : current)), 2000);
+    } catch {
+      /* Clipboard permission denied — the text is still visible to select and copy by hand. */
+    }
+  }
+
+  return (
+    <div className="jida-article-actions">
+      <div className="jida-article-actions-row">
+        <button
+          type="button"
+          className="jida-article-action-btn"
+          onClick={() => setShowCite((v) => !v)}
+          aria-expanded={showCite}
+        >
+          <Quote size={14} />
+          Cite this article
+        </button>
+        <button type="button" className="jida-article-action-btn" onClick={() => copy(url, "link")}>
+          {copied === "link" ? <Check size={14} /> : <Link2 size={14} />}
+          {copied === "link" ? "Link copied" : "Copy link"}
+        </button>
+      </div>
+
+      {showCite && (
+        <div className="jida-article-cite-box">
+          <p>{citation}</p>
+          <button type="button" className="jida-advsearch-reset" onClick={() => copy(citation, "cite")}>
+            {copied === "cite" ? "Copied" : "Copy citation"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -778,6 +778,7 @@ button:hover{
 
 .jida-workspace {
   display: grid;
+  align-content: start;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
   background: #f0f4f9;
@@ -1701,7 +1702,7 @@ button.jida-back-btn:hover {
 /* â”€â”€â”€ Contact section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-contact {
-  background: #fff;
+  background: #f4f7fb;
   padding: 4rem 2.5rem;
   border-top: 1px solid #e8eef8;
 }
@@ -3122,6 +3123,15 @@ button.jida-password-toggle:hover {
   color: #6a81a5;
 }
 
+.jida-issue-article-date {
+  display: block;
+  grid-column: 2;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+  color: #8ea3c0;
+  white-space: nowrap;
+}
+
 .jida-issue-empty {
   font-size: 0.86rem;
   color: #8ea3c0;
@@ -3434,8 +3444,7 @@ button.jida-password-toggle:hover {
 }
 
 .jida-home-search-form > label,
-.jida-home-advanced label,
-.jida-archive-filters label {
+.jida-home-advanced label {
   color: #263d5f;
   font-size: 0.75rem;
   font-weight: 800;
@@ -3449,8 +3458,7 @@ button.jida-password-toggle:hover {
 }
 
 .jida-home-search-row input,
-.jida-home-advanced input,
-.jida-archive-filters select {
+.jida-home-advanced input {
   min-height: 44px;
   width: 100%;
   border: 1px solid #b9c9df;
@@ -3462,8 +3470,7 @@ button.jida-password-toggle:hover {
 }
 
 .jida-home-search-row input:focus,
-.jida-home-advanced input:focus,
-.jida-archive-filters select:focus {
+.jida-home-advanced input:focus {
   border-color: #2e5fa4;
   box-shadow: 0 0 0 3px rgba(46, 95, 164, 0.12);
 }
@@ -3485,7 +3492,10 @@ button.jida-password-toggle:hover {
 .jida-advanced-toggle,
 .jida-filter-clear {
   justify-self: start;
+  width: auto;
+  height: auto;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: #2e5fa4;
   cursor: pointer;
@@ -3597,117 +3607,337 @@ button.jida-password-toggle:hover {
   color: #952c35;
 }
 
-/* ── Archive: categorized browse (year / subject facets) ────────────────── */
+/* ── Archive: year accordion ─────────────────────────────────────────────
+   Structure borrowed from IJRAMT's archive page: a plain "Archives" header
+   with a search shortcut, then a single-column list of year rows that
+   expand on click (plus/minus icon, solid-fill active state). JIDA nests
+   one level deeper than the source (Year → Issue → Article) since there's
+   no separate issue-detail page to link out to. */
 
-.jida-archive-filters {
+.jida-archive-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.jida-archive-header h1 {
+  margin-top: 0.35rem;
+  color: #10223d;
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  text-align: left;
+}
+
+/* ── Archive: filter bar (search / A–Z / subject / date) ─────────────────
+   Borrowed from Taylor & Francis's subject listing page — an inline search
+   box with a field-scope dropdown, an A–Z browse strip, and subject/date
+   facets. Replaces the old plain "Search" link; the year accordion below
+   is unchanged and still the default view when nothing is filtered. */
+
+.jida-archive-filterbar {
+  display: grid;
+  gap: 1rem;
+}
+
+.jida-archive-filter-search {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.jida-archive-filter-search input {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #fff;
+  color: #10223d;
+  padding: 0.6rem 0.8rem;
+  outline: none;
+}
+
+.jida-archive-filter-search input:focus {
+  border-color: #2e5fa4;
+  box-shadow: 0 0 0 3px rgba(46, 95, 164, 0.12);
+}
+
+.jida-archive-filter-search select {
+  min-height: 42px;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #fff;
+  color: #10223d;
+  padding: 0 0.6rem;
+}
+
+.jida-archive-filter-search button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  height: auto;
+  min-height: 42px;
+  border: 0;
+  border-radius: 6px;
+  background: #2e5fa4;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0 1.1rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.jida-archive-filter-search button:hover {
+  background: #214a82;
+}
+
+.jida-archive-az {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  margin-top: 1rem;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #eef2f7;
 }
 
-.jida-archive-layout {
-  display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
-}
-
-.jida-archive-sidebar {
-  display: grid;
-  gap: 1rem;
-  position: sticky;
-  top: 1rem;
-}
-
-.jida-archive-facet-group {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  padding: 1rem 1.1rem;
-  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.06);
-}
-
-.jida-archive-facet-group h3 {
+.jida-archive-az-label {
+  color: #6a81a5;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #10223d;
-  margin-bottom: 0.6rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #eef2f7;
+  white-space: nowrap;
 }
 
-.jida-archive-facet-list {
+.jida-archive-az-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.jida-archive-az-letter {
+  width: auto;
+  height: auto;
+  min-width: 26px;
+  border: 1px solid #dce5f0;
+  border-radius: 4px;
+  background: #f4f7fb;
+  color: #263d5f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.4rem;
+  cursor: pointer;
+}
+
+.jida-archive-az-letter:hover:not(:disabled) {
+  border-color: #2e5fa4;
+  color: #1d4d91;
+}
+
+.jida-archive-az-letter.active {
+  background: #2e5fa4;
+  border-color: #2e5fa4;
+  color: #fff;
+}
+
+.jida-archive-az-letter:disabled {
+  color: #c3cede;
+  cursor: default;
+}
+
+.jida-archive-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.jida-archive-filter-row label {
+  display: grid;
+  gap: 0.3rem;
+  color: #263d5f;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jida-archive-filter-row select {
+  min-height: 38px;
+  min-width: 180px;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #fff;
+  color: #10223d;
+  padding: 0 0.6rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.jida-archive-filter-row .jida-filter-clear {
+  margin-bottom: 0.15rem;
+}
+
+.jida-archive-results-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.1rem;
-  max-height: 15rem;
-  overflow-y: auto;
-}
-
-.jida-archive-facet-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  border-radius: 6px;
-  padding: 0.4rem 0.5rem;
-  color: #345073;
-  font-size: 0.84rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.jida-archive-facet-item:hover {
-  background: #f0f4f9;
-}
-
-.jida-archive-facet-item.active {
-  background: #e5edf9;
-  color: #1d4d91;
-  font-weight: 700;
-}
-
-.jida-archive-facet-count {
-  color: #8ea3c0;
-  font-size: 0.76rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.jida-archive-facet-item.active .jida-archive-facet-count {
-  color: #2e5fa4;
-}
-
-.jida-archive-facet-empty {
-  color: #8ea3c0;
-  font-size: 0.82rem;
-  padding: 0.4rem 0.5rem;
-}
-
-.jida-archive-main {
-  display: grid;
   gap: 1rem;
-  min-width: 0;
 }
 
-.jida-archive-year-group + .jida-archive-year-group {
+.jida-archive-results-list li {
+  padding-bottom: 1rem;
+  border-bottom: 1px dotted #e2e8f0;
+}
+
+.jida-archive-result-type {
+  display: block;
+  color: #6a81a5;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jida-archive-result-title {
+  display: inline-block;
+  margin-top: 0.3rem;
+  color: #1d4d91;
+  font-size: 1.02rem;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.jida-archive-result-title:hover {
+  text-decoration: underline;
+}
+
+.jida-archive-result-authors {
+  margin-top: 0.35rem;
+  color: #345073;
+  font-size: 0.86rem;
+}
+
+.jida-archive-result-date {
+  display: block;
+  margin-top: 0.25rem;
+  color: #8ea3c0;
+  font-size: 0.78rem;
+}
+
+.jida-archive-result-empty {
+  color: #8ea3c0;
+  padding: 1rem 0;
+}
+
+@media (max-width: 640px) {
+  .jida-archive-filter-search {
+    flex-direction: column;
+  }
+
+  .jida-archive-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jida-archive-filter-row select {
+    min-width: 0;
+  }
+}
+
+.jida-archive-accordion {
+  display: grid;
+  gap: 0.6rem;
   margin-top: 1.5rem;
 }
 
-.jida-archive-year-heading {
-  color: #10223d;
+.jida-archive-accordion-item {
+  border-radius: 8px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.jida-archive-accordion-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #1d4d91;
   font-size: 1rem;
-  font-weight: 800;
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.85rem;
-  border-bottom: 2px solid #d79b2b;
+  font-weight: 700;
+  text-align: left;
+  padding: 0.85rem 1.1rem;
+  cursor: pointer;
+}
+
+.jida-archive-accordion-trigger svg {
+  flex-shrink: 0;
+}
+
+.jida-archive-accordion-item:hover > .jida-archive-accordion-trigger {
+  background: #e2e9f3;
+}
+
+.jida-archive-accordion-item.open > .jida-archive-accordion-trigger {
+  background: #2e5fa4;
+  color: #fff;
+}
+
+.jida-archive-accordion-panel {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem 1rem;
+}
+
+.jida-archive-issue-row {
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.jida-archive-issue-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #263d5f;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+
+.jida-archive-issue-trigger svg {
+  flex-shrink: 0;
+  color: #2e5fa4;
+}
+
+.jida-archive-issue-trigger:hover {
+  background: #f4f7fb;
+}
+
+.jida-archive-issue-count {
+  margin-left: auto;
+  color: #8ea3c0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.jida-archive-issue-row .jida-issue-contents,
+.jida-archive-issue-row .jida-issue-empty {
+  padding: 0 0.9rem 0.85rem;
 }
 
 @media (max-width: 768px) {
@@ -3731,12 +3961,9 @@ button.jida-password-toggle:hover {
     grid-template-columns: 1fr;
   }
 
-  .jida-archive-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .jida-archive-sidebar {
-    position: static;
+  .jida-archive-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .jida-auth-group a {
@@ -3924,5 +4151,450 @@ button.jida-password-toggle:hover {
 
   .jida-advsearch-filter-row select {
     min-width: 0;
+  }
+}
+
+/* ── Advanced search: inline results ─────────────────────────────────────
+   Results render on this same page instead of redirecting, with a "No
+   result." message before a search runs (and after one comes up empty). */
+
+.jida-advsearch-results {
+  margin-top: 1.25rem;
+  min-height: 12rem;
+}
+
+.jida-advsearch-noresult {
+  padding: 2.5rem 0;
+  text-align: center;
+  color: #8ea3c0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.jida-advsearch-result-group + .jida-advsearch-result-group {
+  margin-top: 1.5rem;
+}
+
+.jida-advsearch-result-group h3 {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #10223d;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #d79b2b;
+}
+
+.jida-advsearch-issue-list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.jida-advsearch-issue-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 6px;
+  background: #eef2f7;
+  padding: 0.55rem 0.75rem;
+}
+
+.jida-advsearch-issue-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #1d4d91;
+}
+
+/* ── Individual article page: Taylor & Francis-style layout ─────────────────
+   Breadcrumb + sticky tab bar, then a three-column layout (on-page nav /
+   article body / related-in-issue) below. The title lives on a plain white
+   header with a wide max-width so long academic titles wrap normally
+   instead of narrowing into a cluster inside a small colored box. */
+
+.jida-article-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  background: #10223d;
+  color: #b7cdf0;
+  font-size: 0.78rem;
+  padding: 0.6rem 1.5rem;
+}
+
+.jida-article-breadcrumb a {
+  color: #dbe7f8;
+  text-decoration: none;
+}
+
+.jida-article-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.jida-article-breadcrumb-current {
+  color: #fff;
+  font-weight: 600;
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jida-article-tabs {
+  position: sticky;
+  top: 58px;
+  z-index: 9;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 1.5rem;
+}
+
+.jida-article-tab {
+  padding: 0.8rem 1rem;
+  color: #345073;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+
+.jida-article-tab:hover {
+  color: #1d4d91;
+}
+
+.jida-article-tab.active {
+  color: #10223d;
+  border-bottom-color: #2e5fa4;
+}
+
+.jida-article-layout {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) minmax(200px, 260px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.jida-article-toc,
+.jida-article-related {
+  position: sticky;
+  top: 110px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.06);
+}
+
+.jida-article-toc h3,
+.jida-article-related h3 {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #10223d;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.jida-article-toc {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.jida-article-toc a {
+  color: #345073;
+  font-size: 0.84rem;
+  text-decoration: none;
+}
+
+.jida-article-toc a:hover {
+  color: #1d4d91;
+  text-decoration: underline;
+}
+
+.jida-article-main {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.jida-article-header {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 1.5rem;
+  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.06);
+}
+
+.jida-article-title {
+  max-width: 42ch;
+  margin-top: 0.5rem;
+  color: #10223d;
+  font-size: clamp(1.5rem, 2.6vw, 2.15rem);
+  line-height: 1.3;
+  font-weight: 800;
+  text-align: left;
+}
+
+.jida-article-byline {
+  margin-top: 0.9rem;
+  color: #263d5f;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.jida-article-meta {
+  margin-top: 0.4rem;
+  color: #6a81a5;
+  font-size: 0.82rem;
+}
+
+.jida-article-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.jida-article-actions {
+  margin-top: 1rem;
+}
+
+.jida-article-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.jida-article-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #b9c9df;
+  border-radius: 6px;
+  background: #f4f7fb;
+  color: #263d5f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+}
+
+.jida-article-action-btn:hover {
+  background: #e5edf9;
+  border-color: #2e5fa4;
+}
+
+.jida-article-cite-box {
+  margin-top: 0.6rem;
+  border-radius: 8px;
+  background: #f4f7fb;
+  border: 1px solid #dce5f0;
+  padding: 0.85rem 1rem;
+}
+
+.jida-article-cite-box p {
+  color: #10223d;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.jida-article-cite-box button {
+  margin-top: 0.5rem;
+}
+
+.jida-article-section {
+  padding: 1.5rem;
+  scroll-margin-top: 120px;
+}
+
+.jida-article-section-title {
+  color: #10223d;
+  font-size: 1.15rem;
+  font-weight: 800;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid #d79b2b;
+}
+
+.jida-article-abstract {
+  margin-top: 0.9rem;
+  color: #263d5f;
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
+.jida-article-keywords {
+  margin-top: 1.5rem;
+}
+
+.jida-article-keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.jida-keyword-pill {
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #1d4d91;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  text-decoration: none;
+}
+
+.jida-keyword-pill:hover {
+  background: #dbe7f8;
+}
+
+.jida-article-empty-note {
+  margin-top: 0.75rem;
+  color: #8ea3c0;
+  font-size: 0.9rem;
+}
+
+.jida-reference-list {
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: refs;
+  display: grid;
+  gap: 1.1rem;
+}
+
+.jida-reference-list li {
+  counter-increment: refs;
+  display: grid;
+  grid-template-columns: 1.8rem 1fr;
+  gap: 0.2rem 0.5rem;
+}
+
+.jida-reference-list li::before {
+  content: counter(refs) ".";
+  color: #6a81a5;
+  font-size: 0.85rem;
+}
+
+.jida-reference-list p {
+  color: #263d5f;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  grid-column: 2;
+}
+
+.jida-reference-scholar-link {
+  grid-column: 2;
+  color: #2e5fa4;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.jida-reference-scholar-link:hover {
+  text-decoration: underline;
+}
+
+.jida-article-related {
+  display: block;
+}
+
+.jida-article-related ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.jida-article-related li + li {
+  padding-top: 0.85rem;
+  border-top: 1px dotted #e2e8f0;
+}
+
+.jida-article-related a {
+  color: #1d4d91;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.jida-article-related a:hover {
+  text-decoration: underline;
+}
+
+.jida-article-related-author {
+  display: block;
+  margin-top: 0.25rem;
+  color: #6a81a5;
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.jida-article-related-date {
+  display: block;
+  margin-top: 0.2rem;
+  color: #8ea3c0;
+  font-size: 0.74rem;
+}
+
+.jida-figure-list {
+  list-style: none;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.jida-figure-list li {
+  border-radius: 8px;
+  background: #f4f7fb;
+  border: 1px solid #dce5f0;
+  padding: 0.7rem 0.9rem;
+}
+
+.jida-figure-label {
+  display: block;
+  color: #1d4d91;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.jida-figure-caption {
+  display: block;
+  margin-top: 0.2rem;
+  color: #263d5f;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 1000px) {
+  .jida-article-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .jida-article-toc,
+  .jida-article-related {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .jida-article-title {
+    max-width: none;
+  }
+
+  .jida-article-tabs {
+    top: 0;
   }
 }
