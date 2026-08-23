@@ -28,7 +28,7 @@ export default function Home() {
     event.preventDefault();
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    router.push(`/archive${params.toString() ? `?${params}` : ""}`);
+    router.push(`/archive/advanced-search${params.toString() ? `?${params}` : ""}`);
   }
 
   // A volume can carry several issues, so the two counts differ: distinct
@@ -118,7 +118,7 @@ export default function Home() {
                   <h3><Link href={`/archive/${article.slug}`}>{article.manuscript.title}</Link></h3>
                   <p>{article.manuscript.abstract || "Read the latest peer-reviewed research from JIDA."}</p>
                   <time dateTime={article.publishedAt}>
-                    {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
+                    Published Online: {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
                   </time>
                 </article>
               ))}

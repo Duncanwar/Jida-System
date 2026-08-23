@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AppHeader, AuthorHover, ReviewArticleButton } from "@/features/jida/components";
+import { PDFParse } from "pdf-parse";
+import {
+  AppHeader,
+  AuthorHover,
+  ReviewArticleButton,
+  ArticleCiteShare,
+} from "@/features/jida/components";
 import { formatIssueTitle } from "@/lib/api";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -34,6 +40,19 @@ type PublicArticleDetail = {
   };
 };
 
+type RelatedArticle = {
+  id: string;
+  slug: string;
+  publishedAt: string;
+  manuscript: {
+    title: string;
+    author?: { firstName?: string | null; lastName?: string | null } | null;
+    coAuthors?: { fullName: string }[];
+  };
+};
+
+type ExtractedFigure = { label: string; caption: string };
+
 async function fetchArticle(slug: string): Promise<PublicArticleDetail | null> {
   try {
     const res = await fetch(`${BASE}/api/public/articles/${slug}`, { cache: "no-store" });
@@ -42,6 +61,136 @@ async function fetchArticle(slug: string): Promise<PublicArticleDetail | null> {
   } catch {
     return null;
   }
+}
+
+/** Other articles published in the same issue — an honest, data-backed stand-in
+ * for the "Related research" sidebar on a Taylor & Francis article page. JIDA
+ * has no citation graph or recommendation engine, so "more from this issue"
+ * is the real relationship available to surface. */
+async function fetchIssueSiblings(
+  issue: PublicArticleDetail["issue"],
+  excludeId: string,
+): Promise<RelatedArticle[]> {
+  try {
+    const res = await fetch(`${BASE}/api/public/issues`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const issues = (await res.json()) as {
+      volume: number;
+      issueNumber: number;
+      year: number;
+      publications?: RelatedArticle[];
+    }[];
+    const match = issues.find(
+      (i) => i.volume === issue.volume && i.issueNumber === issue.issueNumber && i.year === issue.year,
+    );
+    return (match?.publications ?? []).filter((p) => p.id !== excludeId);
+  } catch {
+    return [];
+  }
+}
+
+/** Reads the article's own PDF and pulls out its figure and table captions —
+ * "Figures & data" isn't tracked as structured data anywhere in JIDA, so this
+ * is the only source of truth for what a given article actually contains.
+ * A caption line is recognised as "Figure N" / "Table N" starting its own
+ * line in the extracted text (how captions are typeset), which distinguishes
+ * it from an in-text reference like "as shown in Figure 1, …" appearing
+ * mid-sentence. Best-effort: a PDF that can't be fetched or parsed in time
+ * just yields no figures rather than failing the page. */
+async function extractFiguresAndTables(slug: string): Promise<ExtractedFigure[]> {
+  const CAPTION_LINE = /^(Figure|Fig\.?|Table)\s*(\d+)\s*[:.\-–]?\s*(.{5,})$/i;
+
+  let parser: PDFParse | null = null;
+  try {
+    const res = await fetch(`${BASE}/api/public/articles/${slug}/download`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const buffer = Buffer.from(await res.arrayBuffer());
+
+    parser = new PDFParse({ data: buffer });
+    const extraction = await Promise.race([
+      parser.getText(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 10_000)),
+    ]);
+
+    const found = new Map<string, ExtractedFigure>();
+    for (const rawLine of extraction.text.split("\n")) {
+      const line = rawLine.trim();
+      const match = CAPTION_LINE.exec(line);
+      if (!match) continue;
+
+      const kind = /^fig/i.test(match[1]) ? "Figure" : "Table";
+      const number = match[2];
+      const caption = match[3].trim().replace(/\s+/g, " ").slice(0, 240);
+      const key = `${kind} ${number}`;
+
+      const existing = found.get(key);
+      if (!existing || caption.length > existing.caption.length) {
+        found.set(key, { label: key, caption });
+      }
+    }
+
+    return Array.from(found.values()).sort((a, b) => {
+      const [aType, aNum] = a.label.split(" ");
+      const [bType, bNum] = b.label.split(" ");
+      if (aType !== bType) return aType === "Figure" ? -1 : 1;
+      return Number(aNum) - Number(bNum);
+    });
+  } catch {
+    return [];
+  } finally {
+    await parser?.destroy().catch(() => {});
+  }
+}
+
+/** "Smith, Doe & Lee" — an ampersand before the last name once there are two
+ * or more authors, a comma-only list otherwise. */
+function joinAuthors(names: string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+}
+
+/** "Lastname, F., Lastname, F. (Year). Title. Journal, Vol(Issue)." — built
+ * only from fields the record actually carries, never a fabricated DOI or
+ * page range. */
+function buildCitation(article: PublicArticleDetail): string {
+  const { manuscript, issue, publishedAt } = article;
+  const year = new Date(publishedAt).getFullYear();
+
+  const leadInitial = manuscript.author.firstName?.trim()?.[0];
+  const lead = manuscript.author.lastName
+    ? `${manuscript.author.lastName}${leadInitial ? `, ${leadInitial}.` : ""}`
+    : null;
+  const coAuthorNames = (manuscript.coAuthors ?? []).map((c) => c.fullName).filter(Boolean);
+  const authors = [lead, ...coAuthorNames].filter(Boolean).join(", ") || "Unknown author";
+
+  return `${authors} (${year}). ${manuscript.title}. Journal of Inter-Discourse Academia, ${issue.volume}(${issue.issueNumber}).`;
+}
+
+/** Splits a freeform references blob into individual entries. Authors paste
+ * this straight from a source document with its original line wraps intact —
+ * not one reference per line — so a plain newline split cuts entries in
+ * half. Entries are detected instead by the APA "Name, I. (Year)" pattern
+ * that starts each one. Text with no such pattern (or only one) is left as
+ * a single entry rather than guessed at. */
+function splitReferences(raw: string): string[] {
+  const text = raw.replace(/\r\n/g, "\n").replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return [];
+
+  const nameInitials = "[A-Za-zÀ-ÖØ-öø-ÿ'’.\\-]+,\\s(?:[A-Z]\\.\\s?){1,3}";
+  const boundary = new RegExp(
+    `[A-Z]${nameInitials}(?:(?:,\\s?&\\s?|,\\s?and\\s?)[A-Z]${nameInitials})*\\(\\d{4}[a-z]?\\)`,
+    "g",
+  );
+
+  const starts: number[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = boundary.exec(text))) starts.push(match.index);
+
+  if (starts.length < 2) return [text];
+
+  return starts.map((start, i) => text.slice(start, starts[i + 1] ?? text.length).trim());
 }
 
 /**
@@ -128,74 +277,187 @@ export default async function ArticlePage(
     [manuscript.author.firstName, manuscript.author.lastName].filter(Boolean).join(" ") ||
     "Unknown author";
   const coAuthors = manuscript.coAuthors ?? [];
+  const [relatedArticles, extractedFigures] = await Promise.all([
+    fetchIssueSiblings(issue, article.id),
+    extractFiguresAndTables(article.slug),
+  ]);
+  const referenceEntries = splitReferences(manuscript.references ?? "");
+  const permalink = `${SITE}/archive/${article.slug}`;
 
   return (
     <main className="jida-shell">
       <AppHeader />
-      <section className="jida-workspace">
-        <div className="jida-page-title">
-          <div>
-            <p className="jida-section-kicker">{formatIssueTitle(issue)}</p>
-            <h2>{manuscript.title}</h2>
-            <p>
-              <AuthorHover
-                author={{
-                  name: authorName,
-                  email: manuscript.author.email,
-                  affiliation: manuscript.author.affiliation,
-                  isCorresponding: true,
-                }}
-              >
-                {authorName}
-              </AuthorHover>
-              {manuscript.author.affiliation ? ` — ${manuscript.author.affiliation}` : ""}
-              {coAuthors.map((c, i) => (
-                <span key={`${c.email}-${i}`}>
-                  {", "}
-                  <AuthorHover
-                    author={{
-                      name: c.fullName,
-                      email: c.email,
-                      affiliation: c.affiliation,
-                      isCorresponding: c.isCorresponding,
-                    }}
-                  >
-                    {c.fullName}
-                  </AuthorHover>
-                </span>
-              ))}
-            </p>
+
+      <nav className="jida-article-breadcrumb" aria-label="Breadcrumb">
+        <Link href="/">Home</Link>
+        <span>›</span>
+        <Link href="/archive">Archive</Link>
+        <span>›</span>
+        <span>{formatIssueTitle(issue)}</span>
+        <span>›</span>
+        <span className="jida-article-breadcrumb-current">{manuscript.title}</span>
+      </nav>
+
+      <div className="jida-article-tabs">
+        <a href="#abstract" className="jida-article-tab active">Full Article</a>
+        <a href="#figures" className="jida-article-tab">Figures &amp; data</a>
+        <a href="#references" className="jida-article-tab">References</a>
+      </div>
+
+      <section className="jida-workspace jida-article-workspace">
+        <div className="jida-article-layout">
+          <aside className="jida-article-toc" aria-label="On this page">
+            <h3>On this page</h3>
+            <a href="#abstract">Abstract</a>
+            {manuscript.keywords.length > 0 && <a href="#abstract">Keywords</a>}
+            <a href="#figures">Figures &amp; data</a>
+            <a href="#references">References</a>
+          </aside>
+
+          <div className="jida-article-main">
+            <header className="jida-article-header">
+              <p className="jida-section-kicker">Research Article</p>
+              <h1 className="jida-article-title">{manuscript.title}</h1>
+
+              <p className="jida-article-byline">
+                <AuthorHover
+                  author={{
+                    name: authorName,
+                    email: manuscript.author.email,
+                    affiliation: manuscript.author.affiliation,
+                    isCorresponding: true,
+                  }}
+                >
+                  {authorName}
+                </AuthorHover>
+                {manuscript.author.affiliation ? ` — ${manuscript.author.affiliation}` : ""}
+                {coAuthors.map((c, i) => (
+                  <span key={`${c.email}-${i}`}>
+                    {", "}
+                    <AuthorHover
+                      author={{
+                        name: c.fullName,
+                        email: c.email,
+                        affiliation: c.affiliation,
+                        isCorresponding: c.isCorresponding,
+                      }}
+                    >
+                      {c.fullName}
+                    </AuthorHover>
+                  </span>
+                ))}
+              </p>
+
+              <p className="jida-article-meta">
+                Published online: {article.publishedAt.slice(0, 10)} · {formatIssueTitle(issue)}
+              </p>
+
+              <ArticleCiteShare citation={buildCitation(article)} url={permalink} />
+
+              <div className="jida-article-header-buttons">
+                <ReviewArticleButton slug={article.slug} />
+                <Link href="/archive" className="jida-nav-ghost">Back to archive</Link>
+              </div>
+            </header>
+
+            <section id="abstract" className="jida-card jida-article-section">
+              <h2 className="jida-article-section-title">Abstract</h2>
+              <p className="jida-article-abstract">{manuscript.abstract}</p>
+
+              {manuscript.keywords.length > 0 && (
+                <div className="jida-article-keywords">
+                  <p className="jida-section-kicker">Keywords</p>
+                  <div className="jida-article-keyword-list">
+                    {manuscript.keywords.map((kw) => (
+                      <Link
+                        key={kw}
+                        href={`/archive/advanced-search?keyword=${encodeURIComponent(kw)}`}
+                        className="jida-keyword-pill"
+                      >
+                        {kw}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section id="figures" className="jida-card jida-article-section">
+              <h2 className="jida-article-section-title">Figures &amp; data</h2>
+              {extractedFigures.length > 0 ? (
+                <>
+                  <p className="jida-article-empty-note">
+                    Detected automatically from the article PDF.
+                  </p>
+                  <ul className="jida-figure-list">
+                    {extractedFigures.map((fig) => (
+                      <li key={fig.label}>
+                        <span className="jida-figure-label">{fig.label}</span>
+                        <span className="jida-figure-caption">{fig.caption}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="jida-article-empty-note">
+                  No figures or tables were detected in this article&apos;s PDF.
+                </p>
+              )}
+            </section>
+
+            <section id="references" className="jida-card jida-article-section">
+              <h2 className="jida-article-section-title">References</h2>
+              {referenceEntries.length > 0 ? (
+                <ol className="jida-reference-list">
+                  {referenceEntries.map((entry, i) => (
+                    <li key={i}>
+                      <p>{entry}</p>
+                      <a
+                        href={`https://scholar.google.com/scholar?q=${encodeURIComponent(entry)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="jida-reference-scholar-link"
+                      >
+                        Google Scholar
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="jida-article-empty-note">No references listed for this article.</p>
+              )}
+            </section>
           </div>
+
+          <aside className="jida-article-related" aria-label="More in this issue">
+            <h3>More in this issue</h3>
+            {relatedArticles.length > 0 ? (
+              <ul>
+                {relatedArticles.slice(0, 6).map((a) => {
+                  const names = [
+                    [a.manuscript.author?.firstName, a.manuscript.author?.lastName]
+                      .filter(Boolean)
+                      .join(" "),
+                    ...(a.manuscript.coAuthors ?? []).map((c) => c.fullName),
+                  ].filter(Boolean);
+                  return (
+                    <li key={a.id}>
+                      <Link href={`/archive/${a.slug}`}>{a.manuscript.title}</Link>
+                      {names.length > 0 && (
+                        <span className="jida-article-related-author">{joinAuthors(names)}</span>
+                      )}
+                      <time className="jida-article-related-date" dateTime={a.publishedAt}>
+                        Published Online: {a.publishedAt.slice(0, 10)}
+                      </time>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="jida-article-empty-note">No other articles in this issue yet.</p>
+            )}
+          </aside>
         </div>
-
-        <section className="jida-card" style={{ padding: "1.5rem" }}>
-          <h3>Abstract</h3>
-          <p style={{ marginTop: "0.5rem", lineHeight: 1.7 }}>{manuscript.abstract}</p>
-
-          {manuscript.keywords.length > 0 && (
-            <p style={{ marginTop: "1rem" }}>
-              <strong>Keywords:</strong> {manuscript.keywords.join(", ")}
-            </p>
-          )}
-
-          <p style={{ marginTop: "0.5rem" }}>
-            <strong>Published:</strong> {article.publishedAt.slice(0, 10)}
-          </p>
-
-          <div style={{ marginTop: "1.25rem", display: "flex", gap: "0.75rem" }}>
-            <ReviewArticleButton slug={article.slug} />
-            <Link href="/archive" className="jida-nav-ghost">Back to archive</Link>
-          </div>
-        </section>
-
-        {manuscript.references && (
-          <section className="jida-card" style={{ padding: "1.5rem" }}>
-            <h3>References</h3>
-            <p style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem", lineHeight: 1.7 }}>
-              {manuscript.references}
-            </p>
-          </section>
-        )}
       </section>
     </main>
   );
