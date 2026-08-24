@@ -205,7 +205,7 @@ export async function resetPassword(token_: string, newPassword: string) {
 // ─── Profile ───────────────────────────────────────────────────────────────
 
 export async function getMe() {
-  return request<{ id: string; email: string; role: Role; name?: string; institution?: string }>(
+  return request<{ id: string; email: string; role: Role; name?: string | null; institution?: string }>(
     "GET",
     "/api/me",
   );
@@ -464,6 +464,42 @@ export async function getPublicArticle(slug: string) {
   return request<PublicArticle>("GET", `/api/public/articles/${slug}`);
 }
 
+// ─── Notifications (manuscript reminders) ──────────────────────────────────
+
+export type NotificationItem = {
+  id: string;
+  userId: string;
+  manuscriptId: string | null;
+  manuscript: { id: string; title: string } | null;
+  title: string;
+  body: string;
+  visibleAt: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export async function createReminder(manuscriptId: string, remindAt: string, note: string) {
+  return request<NotificationItem>("POST", "/api/notifications/reminders", {
+    manuscriptId,
+    remindAt,
+    note,
+  });
+}
+
+export async function getNotifications() {
+  return request<{ items: NotificationItem[]; unreadCount: number }>(
+    "GET",
+    "/api/notifications",
+  );
+}
+
+export async function markNotificationRead(id: string) {
+  return request<void>("PATCH", `/api/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead() {
+  return request<void>("PATCH", "/api/notifications/read-all");
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 

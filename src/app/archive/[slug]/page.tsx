@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PDFParse } from "pdf-parse";
 import {
   AppHeader,
   AuthorHover,
@@ -51,8 +50,6 @@ type RelatedArticle = {
   };
 };
 
-type ExtractedFigure = { label: string; caption: string };
-
 async function fetchArticle(slug: string): Promise<PublicArticleDetail | null> {
   try {
     const res = await fetch(`${BASE}/api/public/articles/${slug}`, { cache: "no-store" });
@@ -86,61 +83,6 @@ async function fetchIssueSiblings(
     return (match?.publications ?? []).filter((p) => p.id !== excludeId);
   } catch {
     return [];
-  }
-}
-
-/** Reads the article's own PDF and pulls out its figure and table captions —
- * "Figures & data" isn't tracked as structured data anywhere in JIDA, so this
- * is the only source of truth for what a given article actually contains.
- * A caption line is recognised as "Figure N" / "Table N" starting its own
- * line in the extracted text (how captions are typeset), which distinguishes
- * it from an in-text reference like "as shown in Figure 1, …" appearing
- * mid-sentence. Best-effort: a PDF that can't be fetched or parsed in time
- * just yields no figures rather than failing the page. */
-async function extractFiguresAndTables(slug: string): Promise<ExtractedFigure[]> {
-  const CAPTION_LINE = /^(Figure|Fig\.?|Table)\s*(\d+)\s*[:.\-–]?\s*(.{5,})$/i;
-
-  let parser: PDFParse | null = null;
-  try {
-    const res = await fetch(`${BASE}/api/public/articles/${slug}/download`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    const buffer = Buffer.from(await res.arrayBuffer());
-
-    parser = new PDFParse({ data: buffer });
-    const extraction = await Promise.race([
-      parser.getText(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 10_000)),
-    ]);
-
-    const found = new Map<string, ExtractedFigure>();
-    for (const rawLine of extraction.text.split("\n")) {
-      const line = rawLine.trim();
-      const match = CAPTION_LINE.exec(line);
-      if (!match) continue;
-
-      const kind = /^fig/i.test(match[1]) ? "Figure" : "Table";
-      const number = match[2];
-      const caption = match[3].trim().replace(/\s+/g, " ").slice(0, 240);
-      const key = `${kind} ${number}`;
-
-      const existing = found.get(key);
-      if (!existing || caption.length > existing.caption.length) {
-        found.set(key, { label: key, caption });
-      }
-    }
-
-    return Array.from(found.values()).sort((a, b) => {
-      const [aType, aNum] = a.label.split(" ");
-      const [bType, bNum] = b.label.split(" ");
-      if (aType !== bType) return aType === "Figure" ? -1 : 1;
-      return Number(aNum) - Number(bNum);
-    });
-  } catch {
-    return [];
-  } finally {
-    await parser?.destroy().catch(() => {});
   }
 }
 
@@ -277,10 +219,7 @@ export default async function ArticlePage(
     [manuscript.author.firstName, manuscript.author.lastName].filter(Boolean).join(" ") ||
     "Unknown author";
   const coAuthors = manuscript.coAuthors ?? [];
-  const [relatedArticles, extractedFigures] = await Promise.all([
-    fetchIssueSiblings(issue, article.id),
-    extractFiguresAndTables(article.slug),
-  ]);
+  const relatedArticles = await fetchIssueSiblings(issue, article.id);
   const referenceEntries = splitReferences(manuscript.references ?? "");
   const permalink = `${SITE}/archive/${article.slug}`;
 
@@ -300,7 +239,6 @@ export default async function ArticlePage(
 
       <div className="jida-article-tabs">
         <a href="#abstract" className="jida-article-tab active">Full Article</a>
-        <a href="#figures" className="jida-article-tab">Figures &amp; data</a>
         <a href="#references" className="jida-article-tab">References</a>
       </div>
 
@@ -310,7 +248,6 @@ export default async function ArticlePage(
             <h3>On this page</h3>
             <a href="#abstract">Abstract</a>
             {manuscript.keywords.length > 0 && <a href="#abstract">Keywords</a>}
-            <a href="#figures">Figures &amp; data</a>
             <a href="#references">References</a>
           </aside>
 
@@ -379,29 +316,6 @@ export default async function ArticlePage(
                     ))}
                   </div>
                 </div>
-              )}
-            </section>
-
-            <section id="figures" className="jida-card jida-article-section">
-              <h2 className="jida-article-section-title">Figures &amp; data</h2>
-              {extractedFigures.length > 0 ? (
-                <>
-                  <p className="jida-article-empty-note">
-                    Detected automatically from the article PDF.
-                  </p>
-                  <ul className="jida-figure-list">
-                    {extractedFigures.map((fig) => (
-                      <li key={fig.label}>
-                        <span className="jida-figure-label">{fig.label}</span>
-                        <span className="jida-figure-caption">{fig.caption}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="jida-article-empty-note">
-                  No figures or tables were detected in this article&apos;s PDF.
-                </p>
               )}
             </section>
 
