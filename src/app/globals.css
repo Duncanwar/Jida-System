@@ -719,6 +719,36 @@ button:hover{
   font-size: 0.84rem;
 }
 
+/* ── 404 page ─────────────────────────────────────────────────────────── */
+
+.jida-not-found {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.6rem;
+  padding: 5rem 1.5rem 6rem;
+  min-height: 60vh;
+}
+
+.jida-not-found h1 {
+  color: #10223d;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+
+.jida-not-found p {
+  color: #5a7194;
+  max-width: 32rem;
+}
+
+.jida-not-found-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .jida-footer {
   background: #0c1a2e;
   color: #dbe7f8;
@@ -764,11 +794,11 @@ button:hover{
 }
 
 .jida-card {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  border: 1px solid #e7edf6;
   background: #ffffff;
   padding: 1.25rem;
-  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.06);
+  box-shadow: 0 1px 2px rgba(16, 34, 61, 0.04), 0 10px 24px -12px rgba(16, 34, 61, 0.12);
 }
 
 .jida-card h2 {
@@ -779,9 +809,12 @@ button:hover{
 .jida-workspace {
   display: grid;
   align-content: start;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  background: #f0f4f9;
+  gap: 1.1rem;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1.5rem 1.75rem 3rem;
+  background: #f4f6fb;
   min-height: calc(100vh - 58px);
 }
 
@@ -873,10 +906,10 @@ button:hover{
   display: grid;
   gap: 0.6rem;
   padding: 1.25rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border: 1px solid #e7edf6;
+  border-radius: 16px;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.06);
+  box-shadow: 0 1px 2px rgba(16, 34, 61, 0.04), 0 10px 24px -12px rgba(16, 34, 61, 0.12);
 }
 
 .jida-form-header {
@@ -887,15 +920,17 @@ button:hover{
 }
 
 .jida-form-header span {
-  width: 2rem;
-  height: 2rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #edf5ff;
-  color: #1d4d91;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #2e5fa4, #1d4d91);
+  color: #fff;
   font-weight: 800;
+  box-shadow: 0 6px 14px -4px rgba(29, 77, 145, 0.45);
 }
 
 .jida-form-header p {
@@ -926,9 +961,9 @@ button:hover{
 .jida-search {
   width: min(100%, 340px);
   border: 1px solid #c7d5ec;
-  border-radius: 7px;
+  border-radius: 10px;
   background: #f8fbff;
-  padding: 0.42rem 0.55rem;
+  padding: 0.5rem 0.65rem;
   color: #10223d;
   font-size: 0.78rem;
   outline: none;
@@ -968,30 +1003,54 @@ button:hover{
 
 .jida-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
   margin: 0;
 }
 
 .jida-metric {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e7edf6;
+  border-radius: 16px;
+  padding: 1.15rem 1.25rem;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.04);
+  box-shadow: 0 1px 2px rgba(16, 34, 61, 0.03), 0 8px 20px -12px rgba(16, 34, 61, 0.12);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
+.jida-metric::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: #2e5fa4;
+}
+
+.jida-metric:hover {
+  box-shadow: 0 4px 8px rgba(16, 34, 61, 0.04), 0 16px 32px -14px rgba(16, 34, 61, 0.18);
+  transform: translateY(-2px);
+}
+
+.jida-metric:nth-of-type(4n+2)::before { background: #d79b2b; }
+.jida-metric:nth-of-type(4n+3)::before { background: #1f9d63; }
+.jida-metric:nth-of-type(4n+4)::before { background: #b23a52; }
+
 .jida-metric p {
-  font-size: 0.83rem;
-  color: #4a6790;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5a7194;
+  letter-spacing: 0.01em;
 }
 
 .jida-metric strong {
   display: block;
-  margin-top: 0.35rem;
-  font-size: 1.6rem;
+  margin-top: 0.4rem;
+  font-size: 1.9rem;
+  font-weight: 800;
   color: #10223d;
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .jida-action-row {
@@ -1004,11 +1063,12 @@ button:hover{
 .jida-btn-secondary {
   width: auto;
   min-width: 170px;
-  border-radius: 7px;
-  padding: 0.42rem 0.75rem;
+  border-radius: 10px;
+  padding: 0.5rem 0.9rem;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   height: auto;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
 }
 
 .jida-btn-primary {
@@ -1019,6 +1079,8 @@ button:hover{
 
 .jida-btn-primary:hover {
   background: #1a325a;
+  box-shadow: 0 12px 24px rgba(16, 34, 61, 0.2);
+  transform: translateY(-1px);
 }
 
 .jida-btn-secondary {
@@ -1029,6 +1091,8 @@ button:hover{
 
 .jida-btn-secondary:hover {
   background: #eaf2ff;
+  border-color: #a9c2e8;
+  transform: translateY(-1px);
 }
 
 .jida-pipeline {
@@ -1077,8 +1141,8 @@ button:hover{
 
 .jida-table-wrap {
   overflow-x: auto;
-  border: 1px solid #e2eaf6;
-  border-radius: 10px;
+  border: 1px solid #e7edf6;
+  border-radius: 14px;
 }
 
 .jida-table {
@@ -1091,21 +1155,35 @@ button:hover{
 
 .jida-table th,
 .jida-table td {
-  border-bottom: 1px solid #e2eaf6;
+  border-bottom: 1px solid #edf1f9;
   text-align: left;
-  padding: 0.32rem 0.42rem;
-  font-size: 0.72rem;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.75rem;
   color: #10223d;
   vertical-align: top;
 }
 
 .jida-table th {
-  color: #355078;
-  background: #f3f7fd;
+  position: sticky;
+  top: 0;
+  color: #4d6b94;
+  background: #f7f9fd;
   font-weight: 700;
-  font-size: 0.62rem;
-  letter-spacing: 0.04em;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.jida-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.jida-table tbody tr:hover {
+  background: #f7f9fd;
+}
+
+.jida-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .jida-table td strong,
@@ -1257,9 +1335,10 @@ button:hover{
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 0.12rem 0.36rem;
-  font-size: 0.62rem;
-  font-weight: 600;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   background: #eef3fc;
   color: #355078;
   border: 1px solid #d3e0f3;
@@ -1601,15 +1680,14 @@ button.jida-panel-card {
   width: 100%;
   height: auto;
   min-height: unset;
-  padding: 1.1rem 1.25rem;
+  padding: 1.15rem 1.35rem;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  border-left: 4px solid #e2e8f0;
+  border: 1px solid #e7edf6;
+  border-radius: 16px;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(16, 34, 61, 0.05);
-  transition: border-color 0.2s, border-left-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 1px 2px rgba(16, 34, 61, 0.03), 0 8px 20px -12px rgba(16, 34, 61, 0.12);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.18s;
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
@@ -1617,25 +1695,25 @@ button.jida-panel-card {
 
 button.jida-panel-card:hover {
   border-color: #c3d4ee;
-  border-left-color: #2e5fa4;
-  box-shadow: 0 4px 14px rgba(16, 34, 61, 0.1);
-  transform: translateX(3px);
+  box-shadow: 0 4px 8px rgba(16, 34, 61, 0.04), 0 18px 34px -14px rgba(16, 34, 61, 0.2);
+  transform: translateY(-3px);
   background: #fafcff;
 }
 
 .jida-panel-num {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 10px;
-  background: #edf5ff;
-  color: #1d4d91;
-  font-size: 0.75rem;
-  font-weight: 900;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2e5fa4, #1d4d91);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   letter-spacing: 0.02em;
+  box-shadow: 0 6px 14px -4px rgba(29, 77, 145, 0.45);
 }
 
 .jida-panel-info {
@@ -1917,9 +1995,9 @@ button.jida-nav-btn:hover {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.55rem 1rem;
+  padding: 0.6rem 1.25rem;
   background: #0e1e38;
-  border-bottom: 1px solid #1e3459;
+  box-shadow: 0 4px 16px rgba(8, 16, 30, 0.25);
 }
 
 .jida-admin-tabbar-label {
@@ -1944,21 +2022,21 @@ button.jida-nav-btn:hover {
   min-width: 0;
   min-height: 0;
   height: auto;
-  padding: 0.32rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #2a4268;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
   background: transparent;
   color: #8facd4;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: none;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.15s;
 }
 
 .jida-admin-tab:hover {
-  background: #1a3254;
-  border-color: #3a5a8a;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #2a4268;
   color: #c8d6ec;
 }
 
@@ -1966,6 +2044,8 @@ button.jida-nav-btn:hover {
   background: #d79b2b;
   border-color: #d79b2b;
   color: #10223d;
+  box-shadow: 0 6px 16px -6px rgba(215, 155, 43, 0.55);
+  transform: translateY(-1px);
 }
 
 /* â”€â”€â”€ Admin create-user form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -2069,6 +2149,61 @@ button.jida-nav-btn:hover {
   border-color: #d79b2b;
   color: #10223d;
   transform: rotate(30deg);
+}
+
+/* ─── Account chip (dashboard header) ───────────────────────────────────── */
+
+/* Sized to fit the name and email in full — never truncated, never a fixed
+   narrow width — since the whole point is showing who's signed in. */
+.jida-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid #2e4d7a;
+  border-radius: 999px;
+  background: #1a3254;
+  padding: 0.3rem 0.9rem 0.3rem 0.3rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.jida-account-chip:hover {
+  background: #21406b;
+  border-color: #d79b2b;
+}
+
+.jida-account-avatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #d79b2b;
+  color: #10223d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.jida-account-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.jida-account-text strong {
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.jida-account-text span {
+  color: #9fb3d4;
+  font-size: 0.72rem;
 }
 
 /* â”€â”€â”€ Profile modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -2194,6 +2329,77 @@ button.jida-nav-btn:hover {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.2rem;
+}
+
+.jida-modal-sm {
+  width: min(360px, 100%);
+}
+
+.jida-modal-body-text {
+  padding: 0 1.1rem;
+  color: #345073;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.jida-modal-sm .jida-modal-actions {
+  padding: 1.1rem;
+  justify-content: flex-end;
+}
+
+.jida-btn-danger {
+  border: 0;
+  border-radius: 8px;
+  background: #b23a52;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.jida-btn-danger:hover {
+  background: #952c35;
+}
+
+/* ── Sidebar Help popover ────────────────────────────────────────────────── */
+
+.jida-sidebar-help-wrap {
+  position: relative;
+}
+
+.jida-help-popover {
+  position: absolute;
+  left: calc(100% + 0.6rem);
+  bottom: 0;
+  width: 240px;
+  background: #fff;
+  color: #10223d;
+  border: 1px solid #d7e1f0;
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(16, 34, 61, 0.22);
+  padding: 0.85rem 1rem;
+  z-index: 50;
+  animation: jida-fade-in 0.15s ease;
+}
+
+.jida-help-popover strong {
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 0.3rem;
+}
+
+.jida-help-popover p {
+  font-size: 0.82rem;
+  color: #5a7194;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.jida-help-popover a {
+  color: #2e5fa4;
+  font-weight: 600;
 }
 
 .jida-modal-error {
@@ -2518,32 +2724,22 @@ button.jida-password-toggle:hover {
 
 /* â”€â”€ Header role switcher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.jida-role-switcher {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem;
+/* A dropdown rather than a row of buttons — one account, one active portal
+   at a time, so a select communicates the choice better than a button row. */
+.jida-role-select {
+  appearance: none;
+  border: 1px solid rgba(16, 34, 61, 0.14);
   border-radius: 999px;
-  background: rgba(16, 34, 61, 0.06);
-}
-
-.jida-role-switch {
-  border-radius: 999px;
-  padding: 0.3rem 0.75rem;
+  background: rgba(16, 34, 61, 0.06) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23345073' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 0.7rem center;
+  color: #345073;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #345073;
-  text-decoration: none;
-  white-space: nowrap;
+  padding: 0.35rem 1.7rem 0.35rem 0.85rem;
+  cursor: pointer;
 }
 
-.jida-role-switch:hover {
-  background: rgba(16, 34, 61, 0.08);
-}
-
-.jida-role-switch.active {
-  background: #10223d;
-  color: #fff;
+.jida-role-select:hover {
+  background-color: rgba(16, 34, 61, 0.1);
 }
 
 /* â”€â”€ Form tabs (co-authors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -3190,17 +3386,6 @@ button.jida-password-toggle:hover {
     color: #345073;
   }
 
-  /* Scrolls rather than hides: this is the only way a chief editor reaches
-     their other portals, so it has to survive a narrow screen. */
-  .jida-role-switcher {
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .jida-role-switcher::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 .jida-admin-row-actions {
@@ -4596,5 +4781,379 @@ button.jida-password-toggle:hover {
 
   .jida-article-tabs {
     top: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Portal dashboard sidebar shell, notifications, reminders, analytics,
+   calendar, and team roster (src/features/jida/dashboard-shell.tsx)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.jida-dash-layout {
+  display: flex;
+  align-items: flex-start;
+  background: #f4f6fb;
+}
+
+.jida-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 58px;
+  height: calc(100vh - 58px);
+  overflow-y: auto;
+  background: #10223d;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.jida-sidebar-group-label {
+  color: #6a86b8;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.jida-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.jida-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: #a9bcda;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, transform 0.15s;
+}
+
+.jida-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.jida-sidebar-item.active {
+  background: #d79b2b;
+  color: #10223d;
+  box-shadow: 0 6px 16px -6px rgba(215, 155, 43, 0.5);
+}
+
+.jida-dash-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Admin embeds Author/Reviewer/Editor's own full dashboard shell inside its
+   "Author/Reviewer/Editor Tasks" tabs — each already ships a sidebar, so
+   nesting it would stack a second one inside Admin's. Collapse the inner
+   one and let its content area take the full width instead. */
+.jida-nested-workspace .jida-sidebar {
+  display: none;
+}
+
+.jida-nested-workspace .jida-dash-layout {
+  display: block;
+}
+
+.jida-help-body {
+  padding: 1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.jida-help-body a {
+  color: #2e5fa4;
+}
+
+/* ── Notification bell ──────────────────────────────────────────────── */
+
+.jida-notification-bell {
+  position: relative;
+}
+
+.jida-notification-dot {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: #b23a52;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #10223d;
+}
+
+.jida-notification-dropdown {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: min(340px, 90vw);
+  border-radius: 14px;
+  border: 1px solid #e7edf6;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(16, 34, 61, 0.22);
+  z-index: 30;
+  overflow: hidden;
+  animation: jida-fade-in 0.15s ease;
+}
+
+.jida-notification-dropdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #edf1f9;
+}
+
+.jida-notification-dropdown-head strong {
+  color: #10223d;
+  font-size: 0.85rem;
+}
+
+.jida-notification-dropdown-head button {
+  border: 0;
+  background: transparent;
+  color: #2e5fa4;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jida-notification-dropdown .jida-article-empty-note {
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.jida-notification-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.jida-notification-list li {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f4f9;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.jida-notification-list li:hover {
+  background: #f7f9fd;
+}
+
+.jida-notification-list li.unread {
+  background: #f5f9ff;
+  border-left: 3px solid #2e5fa4;
+}
+
+.jida-notification-list li strong {
+  display: block;
+  color: #10223d;
+  font-size: 0.8rem;
+}
+
+.jida-notification-list li p {
+  margin-top: 0.2rem;
+  color: #5a7194;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.jida-notification-list li time {
+  display: block;
+  margin-top: 0.35rem;
+  color: #8ba0c2;
+  font-size: 0.68rem;
+}
+
+/* ── Reminder button + popover ──────────────────────────────────────── */
+
+.jida-reminder-btn-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.jida-reminder-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: min(280px, 85vw);
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid #e7edf6;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(16, 34, 61, 0.22);
+  text-align: left;
+}
+
+.jida-reminder-popover label {
+  display: grid;
+  gap: 0.28rem;
+  color: #263d5f;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jida-reminder-popover input,
+.jida-reminder-popover textarea {
+  border: 1px solid #c7d5ec;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 0.45rem 0.6rem;
+  color: #10223d;
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  outline: none;
+}
+
+.jida-reminder-popover textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.jida-reminder-popover-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.jida-reminder-popover-actions button {
+  min-width: 0;
+  flex: 1;
+}
+
+/* ── Team roster ─────────────────────────────────────────────────────── */
+
+.jida-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.85rem;
+}
+
+.jida-team-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  border: 1px solid #e7edf6;
+  border-radius: 14px;
+  padding: 1rem;
+  background: #fafcff;
+}
+
+.jida-team-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2e5fa4, #1d4d91);
+  color: #fff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.jida-team-card strong {
+  display: block;
+  color: #10223d;
+  font-size: 0.88rem;
+  margin-bottom: 0.3rem;
+}
+
+.jida-team-affiliation {
+  margin-top: 0.3rem;
+  color: #5a7194;
+  font-size: 0.76rem;
+}
+
+.jida-team-email {
+  display: inline-block;
+  margin-top: 0.3rem;
+  color: #2e5fa4;
+  font-size: 0.76rem;
+}
+
+/* ── Dashboard preview list ("See all" trim on the Dashboard view) ────── */
+
+.jida-preview-footer {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.jida-preview-footer button {
+  border: 0;
+  background: transparent;
+  color: #2e5fa4;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jida-preview-footer button:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .jida-dash-layout {
+    flex-direction: column;
+  }
+
+  .jida-sidebar {
+    width: 100%;
+    height: auto;
+    position: sticky;
+    top: 58px;
+    z-index: 8;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .jida-sidebar-group-label {
+    display: none;
+  }
+
+  .jida-sidebar-nav {
+    flex-direction: row;
+  }
+
+  .jida-sidebar-item span {
+    display: none;
+  }
+
+  .jida-sidebar-item {
+    padding: 0.5rem;
   }
 }
