@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check } from "lucide-react";
+import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   getManuscripts,
@@ -218,6 +218,51 @@ function initialsOf(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** The public nav's "About" item — a dropdown onto the four sections of the
+ * standalone /about page, closing on an outside click or an item pick. */
+function AboutMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickAway(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickAway);
+    return () => document.removeEventListener("mousedown", onClickAway);
+  }, []);
+
+  const items: { href: string; label: string }[] = [
+    { href: "/about#about-jida", label: "About JIDA" },
+    { href: "/about#why-publish", label: "Why Publish with JIDA" },
+    { href: "/about#guidelines", label: "Guidelines to Publish with JIDA" },
+    { href: "/about#editorial-board", label: "Editorial Board" },
+  ];
+
+  return (
+    <div className="jida-about-menu" ref={ref}>
+      <button
+        type="button"
+        className="jida-about-trigger"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
+        About <ChevronDown size={14} className={open ? "jida-about-chevron open" : "jida-about-chevron"} />
+      </button>
+      {open && (
+        <div className="jida-about-dropdown" role="menu">
+          {items.map((item) => (
+            <Link key={item.href} href={item.href} role="menuitem" onClick={() => setOpen(false)}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -267,59 +312,23 @@ export function AppHeader() {
     <>
       <header className="jida-header">
         <Link href="/" className="jida-header-brand">
-          <span className="jida-header-kicker">Journal of Inter-Discourse Academia</span>
-          <strong className="jida-header-title">JIDA System</strong>
+          <img src="/images/auca_logo.png" alt="AUCA logo" className="jida-header-logo" />
+          <span className="jida-header-name">Journal of Inter-Discourse Academia</span>
         </Link>
 
-        <div className="jida-header-right">
-          {!isPublicPage && isLoggedIn && roleLabel && (
-            <span className="jida-role-badge">{roleLabel}</span>
-          )}
+        {isPublicPage ? (
+          <nav className="jida-header-nav jida-header-nav-public">
+            <AboutMenu />
+            <Link href="/#jida-articles-section">Articles &amp; Publication</Link>
 
-          {/* Role switcher — how a chief editor reaches the reviewer and
-              author portals their role grants them. A dropdown rather than a
-              row of buttons since it's a single choice among several. */}
-          {showSwitcher && (
-            <select
-              className="jida-role-select"
-              aria-label="Switch portal"
-              value={availablePortals.find((p) => pathname.startsWith(p.href))?.href ?? availablePortals[0].href}
-              onChange={(e) => router.push(e.target.value)}
-            >
-              {availablePortals.map((portal) => (
-                <option key={portal.href} value={portal.href}>{portal.label}</option>
-              ))}
-            </select>
-          )}
-
-          <nav className="jida-header-nav">
-            {isPublicPage && (
-              <>
-                <Link
-                  href="/"
-                  className={pathname === "/" ? "active" : undefined}
-                  aria-current={pathname === "/" ? "page" : undefined}
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/archive"
-                  className={pathname.startsWith("/archive") ? "active" : undefined}
-                  aria-current={pathname.startsWith("/archive") ? "page" : undefined}
-                >
-                  Archive
-                </Link>
-              </>
-            )}
-
-            {isPublicPage && !isLoggedIn && (
+            {!isLoggedIn && (
               <span className="jida-auth-group" aria-label="Account access">
                 <Link href="/login" className="jida-auth-group-login">Login</Link>
                 <Link href="/signup" className="jida-auth-group-register">Register</Link>
               </span>
             )}
 
-            {isPublicPage && isLoggedIn && (
+            {isLoggedIn && (
               <>
                 <Link href={homePortal} className="jida-nav-ghost">
                   My Workspace
@@ -338,27 +347,52 @@ export function AppHeader() {
                 </button>
               </>
             )}
-            {!isPublicPage && isLoggedIn && (
-              <>
-                <NotificationBell />
-                {account && (
-                  <button
-                    type="button"
-                    className="jida-account-chip"
-                    onClick={() => setShowProfile(true)}
-                    title="Profile settings"
-                  >
-                    <span className="jida-account-avatar">{initialsOf(account.name)}</span>
-                    <span className="jida-account-text">
-                      <strong>{account.name}</strong>
-                      <span>{account.email}</span>
-                    </span>
-                  </button>
-                )}
-              </>
-            )}
           </nav>
-        </div>
+        ) : (
+          <div className="jida-header-right">
+            {isLoggedIn && roleLabel && (
+              <span className="jida-role-badge">{roleLabel}</span>
+            )}
+
+            {/* Role switcher — how a chief editor reaches the reviewer and
+                author portals their role grants them. A dropdown rather than a
+                row of buttons since it's a single choice among several. */}
+            {showSwitcher && (
+              <select
+                className="jida-role-select"
+                aria-label="Switch portal"
+                value={availablePortals.find((p) => pathname.startsWith(p.href))?.href ?? availablePortals[0].href}
+                onChange={(e) => router.push(e.target.value)}
+              >
+                {availablePortals.map((portal) => (
+                  <option key={portal.href} value={portal.href}>{portal.label}</option>
+                ))}
+              </select>
+            )}
+
+            <nav className="jida-header-nav">
+              {isLoggedIn && (
+                <>
+                  <NotificationBell />
+                  {account && (
+                    <button
+                      type="button"
+                      className="jida-account-chip"
+                      onClick={() => setShowProfile(true)}
+                      title="Profile settings"
+                    >
+                      <span className="jida-account-avatar">{initialsOf(account.name)}</span>
+                      <span className="jida-account-text">
+                        <strong>{account.name}</strong>
+                        <span>{account.email}</span>
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
+            </nav>
+          </div>
+        )}
       </header>
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </>

@@ -4,7 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AppHeader } from "@/features/jida/components";
-import { getPublicArticles, getPublicIssues, type PublicArticle, type PublicIssue } from "@/lib/api";
+import {
+  formatIssueTitle,
+  getPublicArticles,
+  getPublicIssues,
+  issueArticleCount,
+  subscribeNewsletter,
+  type PublicArticle,
+  type PublicIssue,
+} from "@/lib/api";
 
 export default function Home() {
   const router = useRouter();
@@ -13,6 +21,10 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [newsletterMsg, setNewsletterMsg] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getPublicIssues(), getPublicArticles()])
@@ -31,10 +43,34 @@ export default function Home() {
     router.push(`/archive/advanced-search${params.toString() ? `?${params}` : ""}`);
   }
 
+  async function handleSubscribe(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNewsletterStatus("loading");
+    setNewsletterMsg(null);
+    try {
+      await subscribeNewsletter(newsletterEmail.trim());
+      setNewsletterStatus("done");
+      setNewsletterMsg("You're subscribed — we'll email you when a new issue is published.");
+      setNewsletterEmail("");
+    } catch (err) {
+      setNewsletterStatus("error");
+      setNewsletterMsg(err instanceof Error ? err.message : "Subscription failed. Please try again.");
+    }
+  }
+
   // A volume can carry several issues, so the two counts differ: distinct
   // volume numbers, and issues published overall.
   const volumeCount = new Set(issues.map((i) => i.volume)).size;
   const issueCount = issues.length;
+
+  const latestArticles = articles
+    .slice()
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+    .slice(0, 5);
+
+  // Issues already arrive newest-first from the API — the three most recent
+  // are the "news" of what's just been published.
+  const recentIssues = issues.slice(0, 3);
 
   return (
     <main className="jida-shell">
@@ -67,6 +103,14 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="jida-welcome" aria-labelledby="welcome-title">
+        <p className="jida-section-kicker">Welcome</p>
+        <h2 id="welcome-title">Welcome to The Journal of Inter-Discourse Academia</h2>
+        <Link href="/about#about-jida" className="jida-advanced-toggle">
+          Learn more about JIDA
+        </Link>
+      </section>
+
       <section className="jida-home-search" aria-labelledby="home-search-title">
         <div className="jida-home-search-copy">
           <p className="jida-section-kicker">Research discovery</p>
@@ -91,39 +135,105 @@ export default function Home() {
         </form>
       </section>
 
-      <section className="jida-home-news" aria-labelledby="home-news-title">
+      <section
+        id="jida-articles-section"
+        className="jida-home-news"
+        aria-labelledby="home-news-title"
+      >
         <div className="jida-home-section-heading">
           <div>
-            <p className="jida-section-kicker">From the archive</p>
+            <p className="jida-section-kicker">Articles &amp; Publication</p>
             <h2 id="home-news-title">Latest articles and publication news</h2>
           </div>
-          <Link href="/archive">View all publications</Link>
         </div>
         {loading && <p className="jida-home-state">Loading publication updates...</p>}
         {error && <p className="jida-home-state jida-home-state-error">{error}</p>}
-        {!loading && !error && articles.length === 0 && (
+        {!loading && !error && articles.length === 0 && issues.length === 0 && (
           <p className="jida-home-state">New publications will appear here.</p>
         )}
-        {!loading && !error && articles.length > 0 && (
-          <div className="jida-home-news-grid">
-            {articles
-              .slice()
-              .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
-              .slice(0, 3)
-              .map((article) => (
-                <article key={article.id} className="jida-home-news-card">
-                  <p className="jida-home-news-meta">
-                    {article.issue ? `Volume ${article.issue.volume}, Issue ${article.issue.issueNumber}` : "JIDA publication"}
-                  </p>
-                  <h3><Link href={`/archive/${article.slug}`}>{article.manuscript.title}</Link></h3>
-                  <p>{article.manuscript.abstract || "Read the latest peer-reviewed research from JIDA."}</p>
-                  <time dateTime={article.publishedAt}>
-                    Published Online: {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
-                  </time>
-                </article>
-              ))}
+        {!loading && !error && (articles.length > 0 || issues.length > 0) && (
+          <div className="jida-articles-columns">
+            <div className="jida-latest-articles">
+              <h3>Latest Articles</h3>
+              {latestArticles.length === 0 ? (
+                <p className="jida-home-state">New articles will appear here.</p>
+              ) : (
+                <ul>
+                  {latestArticles.map((article) => (
+                    <li key={article.id}>
+                      <Link href={`/archive/${article.slug}`}>{article.manuscript.title}</Link>
+                      <p className="jida-latest-meta">
+                        {article.issue
+                          ? `Volume ${article.issue.volume}, Issue ${article.issue.issueNumber}, ${article.issue.year}`
+                          : "JIDA publication"}
+                      </p>
+                      <time dateTime={article.publishedAt}>
+                        Published: {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
+                      </time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="jida-recent-publications">
+              <h3>Recent Publications</h3>
+              {recentIssues.length === 0 ? (
+                <p className="jida-home-state">New issues will appear here.</p>
+              ) : (
+                <ul>
+                  {recentIssues.map((issue) => (
+                    <li key={issue.id}>
+                      <Link href="/archive">{formatIssueTitle(issue)}</Link>
+                      <p className="jida-latest-meta">{issueArticleCount(issue)} articles</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
+      </section>
+
+      <section className="jida-newsletter" aria-labelledby="newsletter-title">
+        <div className="jida-newsletter-copy">
+          <p className="jida-section-kicker">Stay in the loop</p>
+          <h2 id="newsletter-title">Get notified when a new issue is published</h2>
+          <p>
+            JIDA publishes twice a year, in June and December. Leave your
+            email and we&apos;ll let you know the moment a new issue goes
+            live — no other mail, ever.
+          </p>
+        </div>
+        <form className="jida-newsletter-form" onSubmit={handleSubscribe}>
+          <label htmlFor="newsletter-email">Email address</label>
+          <div className="jida-newsletter-row">
+            <input
+              id="newsletter-email"
+              type="email"
+              required
+              placeholder="you@example.com"
+              value={newsletterEmail}
+              onChange={(event) => setNewsletterEmail(event.target.value)}
+              disabled={newsletterStatus === "loading"}
+            />
+            <button type="submit" disabled={newsletterStatus === "loading"}>
+              {newsletterStatus === "loading" ? "Subscribing…" : "Notify me"}
+            </button>
+          </div>
+          {newsletterMsg && (
+            <p
+              className={
+                newsletterStatus === "error"
+                  ? "jida-newsletter-msg jida-newsletter-msg-error"
+                  : "jida-newsletter-msg"
+              }
+              role="status"
+            >
+              {newsletterMsg}
+            </p>
+          )}
+        </form>
       </section>
 
       <section className="jida-contact">
@@ -175,7 +285,12 @@ export default function Home() {
               </span>
               <div>
                 <strong>Call Us</strong>
-                <p>+250 000 000 000</p>
+                <p>
+                  <b>Chief Editor:</b> +250 788 866 769
+                </p>
+                <p>
+                  <b>Associate Editor:</b> +250 788 572 042
+                </p>
               </div>
             </div>
 
@@ -199,13 +314,10 @@ export default function Home() {
               <div>
                 <strong>Email Us</strong>
                 <p>
-                  <b>Submissions:</b> submissions@jida.ac.rw
+                  <b>Chief Editor:</b> jacques.kayigema@auca.ac.rw
                 </p>
                 <p>
-                  <b>Editorial:</b> editor@jida.ac.rw
-                </p>
-                <p>
-                  <b>General:</b> info@jida.ac.rw
+                  <b>Associate Editor:</b> enock.nibishaka@auca.ac.rw
                 </p>
               </div>
             </div>
@@ -226,11 +338,94 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="jida-footer">
-        <span>
-          © {new Date().getFullYear()} Journal of Inter-Discourse Academia. All
-          Rights Reserved.
-        </span>
+      <footer className="jida-footer" id="jida-guidelines">
+        <div className="jida-footer-grid">
+          <div className="jida-footer-col jida-footer-about">
+            <strong className="jida-footer-brand">JIDA</strong>
+            <p>
+              Journal of Inter-Discourse Academia — a biannual, peer-reviewed
+              publication of the Adventist University of Central Africa
+              (AUCA), providing interdisciplinary discussion on issues that
+              affect our workplace and our society.
+            </p>
+            <p className="jida-footer-meta">
+              Volume 7, Issue 1, 2026 · ISBN 978-9970-479-00-9 · © AUCA
+            </p>
+          </div>
+
+          <div className="jida-footer-col">
+            <h4>Explore</h4>
+            <nav>
+              <Link href="/">Home</Link>
+              <Link href="/archive">Archive</Link>
+              <Link href="/archive/advanced-search">Advanced search</Link>
+              <Link href="/signup">Submit a manuscript</Link>
+            </nav>
+          </div>
+
+          <div className="jida-footer-col">
+            <h4>Submission guidelines</h4>
+            <ul className="jida-footer-list">
+              <li>English, maximum 15 pages</li>
+              <li>Abstract: 250–300 words, including keywords</li>
+              <li>Times New Roman 12, single-spaced, APA heading levels</li>
+              <li>
+                Publication fee: free for AUCA faculty, $50 for other authors
+              </li>
+            </ul>
+          </div>
+
+          <div className="jida-footer-col">
+            <h4>Editorial board</h4>
+            <ul className="jida-footer-board">
+              <li>
+                <strong>Prof. Kayigema Jacques</strong>
+                <span>Chief Editor</span>
+                <a href="mailto:jacques.kayigema@auca.ac.rw">
+                  jacques.kayigema@auca.ac.rw
+                </a>
+              </li>
+              <li>
+                <strong>Mr. Nibishaka Enock</strong>
+                <span>Associate Editor</span>
+                <a href="mailto:enock.nibishaka@auca.ac.rw">
+                  enock.nibishaka@auca.ac.rw
+                </a>
+              </li>
+              <li>
+                <strong>Mr. Nsabimana Aphrodise</strong>
+                <span>Typesetting &amp; Marketing Advisor</span>
+                <a href="mailto:aphrodice.nsabimana@auca.ac.rw">
+                  aphrodice.nsabimana@auca.ac.rw
+                </a>
+              </li>
+              <li>
+                <strong>Mr. Manirakiza Jean Baptiste</strong>
+                <span>Typesetting &amp; Marketing Advisor</span>
+                <a href="mailto:jeanbaptiste.manirakiza@auca.ac.rw">
+                  jeanbaptiste.manirakiza@auca.ac.rw
+                </a>
+              </li>
+              <li>
+                <strong>Dr. Gatsinzi Patrick</strong>
+                <span>Typesetting &amp; Marketing Advisor</span>
+                <a href="mailto:Patrick.gatsinzi@auca.ac.rw">
+                  Patrick.gatsinzi@auca.ac.rw
+                </a>
+              </li>
+            </ul>
+            <p className="jida-footer-enquiries">
+              Enquiries: Prof. Kayigema Jacques · +250 788 866 769
+            </p>
+          </div>
+        </div>
+
+        <div className="jida-footer-bottom">
+          <span>
+            © {new Date().getFullYear()} Journal of Inter-Discourse Academia.
+            All Rights Reserved.
+          </span>
+        </div>
       </footer>
     </main>
   );
