@@ -464,6 +464,10 @@ export async function getPublicArticle(slug: string) {
   return request<PublicArticle>("GET", `/api/public/articles/${slug}`);
 }
 
+export async function subscribeNewsletter(email: string) {
+  return request<{ message: string }>("POST", "/api/public/subscribe", { email });
+}
+
 // ─── Notifications (manuscript reminders) ──────────────────────────────────
 
 export type NotificationItem = {
