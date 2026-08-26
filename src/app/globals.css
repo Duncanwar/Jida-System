@@ -1,7 +1,20 @@
 ﻿@import "tailwindcss";
 @import "tw-animate-css";
 
-
+/* ── Design tokens ── shared by the dashboard redesign (StatCard, activity
+   timeline, action modals). Existing rules keep their own literals; these
+   back only the new components so a mockup-driven restyle doesn't require
+   re-touching thousands of pre-existing declarations. */
+:root {
+  --jida-navy: #10223d;
+  --jida-gold: #d79b2b;
+  --jida-blue: #2e5fa4;
+  --jida-blue-dark: #1d4d91;
+  --jida-muted: #5a7194;
+  --jida-line: #e7edf6;
+  --jida-card-radius: 16px;
+  --jida-card-shadow: 0 1px 2px rgba(16, 34, 61, 0.04), 0 10px 24px -12px rgba(16, 34, 61, 0.12);
+}
 
 *{
   margin: 0;
@@ -387,8 +400,8 @@ button:hover{
 
 .jida-header nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  gap: 1rem;
 }
 
 .jida-header nav a,
@@ -1114,6 +1127,19 @@ button:hover{
   letter-spacing: 0.01em;
 }
 
+.jida-metric-clickable {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.jida-metric-clickable:hover {
+  box-shadow: 0 1px 2px rgba(16, 34, 61, 0.03), 0 12px 24px -10px rgba(16, 34, 61, 0.22);
+  transform: translateY(-1px);
+}
+
 .jida-metric strong {
   display: block;
   margin-top: 0.4rem;
@@ -1458,6 +1484,76 @@ button:hover{
   background: #ffecee;
   color: #952c35;
   border-color: #f3c3c9;
+}
+
+/* ── Action result messages — success/error, with a matching glow so the
+   whole card the action lives in reads as "this just happened" ──────── */
+
+.jida-result-msg {
+  display: block;
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0 0 0.85rem;
+}
+
+.jida-result-msg.success {
+  background: #e7f8ef;
+  color: #16653a;
+  border: 1px solid #bfe8cf;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12), 0 6px 18px -6px rgba(22, 163, 74, 0.35);
+}
+
+.jida-result-msg.danger {
+  background: #ffecee;
+  color: #952c35;
+  border: 1px solid #f3c3c9;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12), 0 6px 18px -6px rgba(220, 38, 38, 0.35);
+}
+
+.jida-form-panel.jida-glow-success {
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+  border-radius: 14px;
+}
+
+.jida-form-panel.jida-glow-danger {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+  border-radius: 14px;
+}
+
+/* ── Gold highlight for the substring a live search matches ─────────── */
+
+/* ── Submission-period grouping ──────────────────────────────────────── */
+
+.jida-period-group + .jida-period-group {
+  margin-top: 1.4rem;
+}
+
+.jida-period-group-label {
+  margin: 0 0 0.6rem;
+  padding: 0.3rem 0.7rem;
+  display: inline-block;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: #345073;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.jida-search-highlight {
+  background: #fbe9b0;
+  color: #6b4a00;
+  border-radius: 3px;
+  padding: 0 0.1em;
+  font-weight: 700;
+}
+
+/* ── Justified comments-to-author section (reviewer review form) ────── */
+
+.jida-justified,
+.jida-justified textarea {
+  text-align: justify;
 }
 
 @media (max-width: 1024px) {
@@ -2118,7 +2214,7 @@ button.jida-back-btn:hover {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
 .jida-nav-ghost {
@@ -3027,6 +3123,7 @@ button.jida-password-toggle:hover {
 
 .jida-track-card {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.25rem;
   align-items: stretch;
   border: 1px solid #e2e8f0;
@@ -3035,6 +3132,19 @@ button.jida-password-toggle:hover {
   background: #ffffff;
   padding: 1rem 1.15rem;
   box-shadow: 0 1px 4px rgba(16, 34, 61, 0.05);
+}
+
+.jida-track-revise-panel {
+  flex-basis: 100%;
+  margin-top: 0.25rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.jida-form-actions-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
 }
 
 .jida-track-main {
@@ -5023,6 +5133,30 @@ button.jida-password-toggle:hover {
   font-size: 0.9rem;
 }
 
+.jida-references-preview {
+  margin: -0.4rem 0 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed #cdddf3;
+  border-radius: 10px;
+  background: #f6faff;
+}
+
+.jida-references-preview-count {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #2e5fa4;
+}
+
+.jida-references-preview .jida-reference-list {
+  margin-top: 0.6rem;
+  gap: 0.6rem;
+}
+
+.jida-references-preview .jida-reference-list p {
+  font-size: 0.85rem;
+}
+
 .jida-reference-list {
   margin: 0.9rem 0 0;
   padding: 0;
@@ -5309,6 +5443,12 @@ button.jida-password-toggle:hover {
   font-size: 0.85rem;
 }
 
+.jida-notification-dropdown-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
 .jida-notification-dropdown-head button {
   border: 0;
   background: transparent;
@@ -5332,10 +5472,65 @@ button.jida-password-toggle:hover {
 }
 
 .jida-notification-list li {
-  padding: 0.75rem 1rem;
+  position: relative;
+  padding: 0.75rem 2.1rem 0.75rem 1rem;
   border-bottom: 1px solid #f1f4f9;
   cursor: pointer;
   transition: background 0.15s;
+}
+
+.jida-notification-clear {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8ba0c2;
+  cursor: pointer;
+}
+
+.jida-notification-clear:hover {
+  background: #eaf0fa;
+  color: #b23a52;
+}
+
+.jida-notification-see-all {
+  display: block;
+  padding: 0.7rem 1rem;
+  text-align: center;
+  border-top: 1px solid #edf1f9;
+  color: #2e5fa4;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.jida-notification-see-all:hover {
+  text-decoration: underline;
+  background: #f7f9fd;
+}
+
+.jida-notification-list-full {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.jida-notification-list-full li {
+  padding: 1rem 2.4rem 1rem 1.1rem;
+}
+
+.jida-notification-list-full li strong {
+  font-size: 0.92rem;
+}
+
+.jida-notification-list-full li p {
+  font-size: 0.85rem;
 }
 
 .jida-notification-list li:hover {
@@ -5772,4 +5967,199 @@ button.jida-password-toggle:hover {
     grid-template-columns: 1fr;
     gap: 2.25rem;
   }
+}
+
+/* ── Dashboard redesign: stat cards, activity timeline, view tabs, action
+   modals — shared across Author/Editor/Reviewer/Admin. ─────────────────── */
+
+.jida-stat-card {
+  /* Overrides the page's unscoped `button{height:40px}` rule (same
+     specificity, so height must be set explicitly here or the card's
+     content gets clipped to 40px). */
+  height: auto;
+  width: 100%;
+  border-radius: var(--jida-card-radius);
+  border: 1px solid var(--jida-line);
+  background: #fff;
+  box-shadow: var(--jida-card-shadow);
+  padding: 1rem 1.1rem;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 0.35rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jida-stat-card:hover {
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(16, 34, 61, 0.1), 0 14px 28px -14px rgba(16, 34, 61, 0.18);
+}
+
+.jida-stat-card.active {
+  border-color: var(--jida-blue);
+}
+
+.jida-stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--jida-muted);
+}
+
+.jida-stat-value {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--jida-navy);
+}
+
+.jida-stat-trend {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--jida-muted);
+}
+
+.jida-stat-trend.up {
+  color: #16653a;
+}
+
+.jida-stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.9rem;
+}
+
+.jida-activity {
+  border-left: 2px solid var(--jida-line);
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 1.1rem;
+  margin: 0;
+}
+
+.jida-activity-event {
+  position: relative;
+  list-style: none;
+}
+
+.jida-activity-event::before {
+  content: "";
+  position: absolute;
+  left: -1.45rem;
+  top: 0.3rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--jida-blue);
+}
+
+.jida-activity-event b {
+  font-size: 0.82rem;
+  color: var(--jida-navy);
+}
+
+.jida-activity-event p {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--jida-muted);
+}
+
+.jida-activity-empty {
+  font-size: 0.82rem;
+  color: var(--jida-muted);
+  padding-left: 0;
+  list-style: none;
+}
+
+.jida-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.jida-view-tab {
+  height: auto;
+  width: auto;
+  border: none;
+  background: #eef2f5;
+  color: #5e7182;
+  padding: 0.45rem 0.8rem;
+  border-radius: 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jida-view-tab.active {
+  background: var(--jida-blue);
+  color: #fff;
+}
+
+/* Larger action-dialog variant of the existing .jida-modal — screening,
+   editorial decision, and review-submission forms. */
+.jida-modal-lg {
+  width: min(760px, 92vw);
+  max-height: 85vh;
+  overflow: auto;
+}
+
+.jida-action-modal-body {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+/* System Settings toggles (Admin). */
+.jida-switch {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--jida-line);
+  font-size: 0.85rem;
+}
+
+.jida-switch:last-child {
+  border-bottom: none;
+}
+
+.jida-toggle {
+  height: 22px;
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #b9c8d2;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.jida-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s ease;
+}
+
+.jida-toggle.on {
+  background: var(--jida-blue);
+}
+
+.jida-toggle.on::after {
+  left: 20px;
+}
+
+.jida-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

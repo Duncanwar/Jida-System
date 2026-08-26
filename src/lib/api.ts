@@ -296,7 +296,7 @@ export async function getManuscript(id: string) {
  * array in a single field, since the request is already multipart.
  */
 export async function submitManuscript(form: FormData, coAuthors: CoAuthor[] = []) {
-  const filled = coAuthors.filter((c) => c.fullName.trim() && c.email.trim());
+  const filled = coAuthors.filter((c) => c.fullName.trim());
   if (filled.length) form.set("coAuthors", JSON.stringify(filled));
   return request<{ id: string }>("POST", "/api/manuscripts", form, true);
 }
@@ -365,14 +365,18 @@ export async function assignReviewers(
   return request("POST", `/api/editor/manuscripts/${manuscriptId}/assign-reviewers`, { assignments });
 }
 
+export type DecisionStage = "INITIAL_SCREENING" | "FINAL_SCREENING";
+
 export async function makeDecision(
   manuscriptId: string,
   decision: "ACCEPT" | "REJECT" | "REQUEST_REVISION",
   notes?: string,
+  stage?: DecisionStage,
 ) {
   return request("POST", `/api/editor/manuscripts/${manuscriptId}/decision`, {
     decision,
     ...(notes ? { notes } : {}),
+    ...(stage ? { stage } : {}),
   });
 }
 
@@ -388,12 +392,18 @@ export async function uploadEditedFile(manuscriptId: string, form: FormData) {
   return request("POST", `/api/editor/manuscripts/${manuscriptId}/edited-file`, form, true);
 }
 
-export async function createIssue(data: { volume: number; issue: number; year: number }) {
+export async function createIssue(data: {
+  volume: number;
+  issue: number;
+  year: number;
+  specialIssue?: boolean;
+}) {
   // Backend field is `issueNumber`.
   return request<{ id: string }>("POST", "/api/editor/issues", {
     volume: data.volume,
     issueNumber: data.issue,
     year: data.year,
+    ...(data.specialIssue !== undefined ? { specialIssue: data.specialIssue } : {}),
   });
 }
 
@@ -444,6 +454,20 @@ export async function patchSettings(data: {
   openForSubmissions?: boolean;
 }) {
   return request("PATCH", "/api/editor/settings", data);
+}
+
+/**
+ * Broadcasts a submission-period announcement to every author, optionally
+ * updating the journal-wide submission deadline / open-for-submissions flag
+ * at the same time.
+ */
+export async function postAnnouncement(data: {
+  title: string;
+  body: string;
+  submissionDeadline?: string | null;
+  openForSubmissions?: boolean;
+}) {
+  return request<{ recipientCount: number }>("POST", "/api/editor/announcements", data);
 }
 
 // ─── Public ────────────────────────────────────────────────────────────────
@@ -503,6 +527,14 @@ export async function markNotificationRead(id: string) {
 
 export async function markAllNotificationsRead() {
   return request<void>("PATCH", "/api/notifications/read-all");
+}
+
+export async function deleteNotification(id: string) {
+  return request<void>("DELETE", `/api/notifications/${id}`);
+}
+
+export async function clearAllNotifications() {
+  return request<void>("DELETE", "/api/notifications");
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -601,6 +633,8 @@ export interface ManuscriptFileInfo {
 
 export interface EditorialDecisionInfo {
   decision: "ACCEPT" | "REJECT" | "REQUEST_REVISION";
+  /** Only present on the editor-side response — which pass through the pipeline this was. */
+  stage?: DecisionStage | null;
   notes?: string | null;
   createdAt: string;
   /** Only present on the editor-side response — which editor left the remark. */
@@ -629,7 +663,8 @@ export interface AuthorVisibleReview {
 
 export interface CoAuthor {
   fullName: string;
-  email: string;
+  /** Optional — only the co-author's name is required on the submission form. */
+  email?: string;
   affiliation?: string | null;
   isCorresponding?: boolean;
 }
@@ -668,6 +703,8 @@ export interface Assignment {
   id: string;
   manuscriptId: string;
   manuscriptTitle?: string;
+  /** The submission deadline in effect when the manuscript came in — used to group the queue by submission period. */
+  submissionDeadline?: string | null;
   abstract?: string;
   keywords?: string[];
   deadline: string;
@@ -693,6 +730,7 @@ export interface EditorSubmission {
   id: string;
   title: string;
   status: ManuscriptStatus;
+  submissionDeadline?: string | null;
   authorName?: string;
   /** Full contact details, for the author hover card. */
   author?: { id: string; name?: string | null; email: string; affiliation?: string | null };
@@ -787,7 +825,14 @@ export interface AdminUser {
   roles?: UserRole[];
   name?: string;
   institution?: string;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
   createdAt?: string;
+}
+
+export interface AdminSettings {
+  automaticBackupsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
 }
 
 // ─── Admin ─────────────────────────────────────────────────────────────────
@@ -818,4 +863,17 @@ export async function adminUpdateUserRoles(
 
 export async function adminDeleteUser(userId: string) {
   return request("DELETE", `/api/admin/users/${userId}`);
+}
+
+/** Soft-disable/re-enable an account instead of deleting it. */
+export async function adminSetUserStatus(userId: string, isActive: boolean) {
+  return request<AdminUser>("PATCH", `/api/admin/users/${userId}/status`, { isActive });
+}
+
+export async function adminGetSettings() {
+  return request<AdminSettings>("GET", "/api/admin/settings");
+}
+
+export async function adminUpdateSettings(data: Partial<AdminSettings>) {
+  return request<AdminSettings>("PATCH", "/api/admin/settings", data);
 }

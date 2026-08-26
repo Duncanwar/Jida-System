@@ -1,4 +1,4 @@
-import { AppHeader, EditorWorkspace, NotificationsPanel } from "@/features/jida/components";
+import { AppHeader, EditorWorkspace } from "@/features/jida/components";
 import { RequireRole } from "@/components/auth/require-role";
 
 export default function EditorPage() {
@@ -7,7 +7,6 @@ export default function EditorPage() {
       <main className="jida-shell">
         <AppHeader />
         <EditorWorkspace />
-        <NotificationsPanel />
       </main>
     </RequireRole>
   );
