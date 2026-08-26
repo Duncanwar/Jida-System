@@ -7,6 +7,7 @@ import {
   ArticleCiteShare,
 } from "@/features/jida/components";
 import { formatIssueTitle } from "@/lib/api";
+import { splitReferences, extractReferenceLink } from "@/lib/references";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 /** Public origin of this site, used for the absolute URLs Scholar requires. */
@@ -108,31 +109,6 @@ function buildCitation(article: PublicArticleDetail): string {
   const authors = [lead, ...coAuthorNames].filter(Boolean).join(", ") || "Unknown author";
 
   return `${authors} (${year}). ${manuscript.title}. Journal of Inter-Discourse Academia, ${issue.volume}(${issue.issueNumber}).`;
-}
-
-/** Splits a freeform references blob into individual entries. Authors paste
- * this straight from a source document with its original line wraps intact —
- * not one reference per line — so a plain newline split cuts entries in
- * half. Entries are detected instead by the APA "Name, I. (Year)" pattern
- * that starts each one. Text with no such pattern (or only one) is left as
- * a single entry rather than guessed at. */
-function splitReferences(raw: string): string[] {
-  const text = raw.replace(/\r\n/g, "\n").replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
-  if (!text) return [];
-
-  const nameInitials = "[A-Za-zÀ-ÖØ-öø-ÿ'’.\\-]+,\\s(?:[A-Z]\\.\\s?){1,3}";
-  const boundary = new RegExp(
-    `[A-Z]${nameInitials}(?:(?:,\\s?&\\s?|,\\s?and\\s?)[A-Z]${nameInitials})*\\(\\d{4}[a-z]?\\)`,
-    "g",
-  );
-
-  const starts: number[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = boundary.exec(text))) starts.push(match.index);
-
-  if (starts.length < 2) return [text];
-
-  return starts.map((start, i) => text.slice(start, starts[i + 1] ?? text.length).trim());
 }
 
 /**
@@ -323,19 +299,33 @@ export default async function ArticlePage(
               <h2 className="jida-article-section-title">References</h2>
               {referenceEntries.length > 0 ? (
                 <ol className="jida-reference-list">
-                  {referenceEntries.map((entry, i) => (
-                    <li key={i}>
-                      <p>{entry}</p>
-                      <a
-                        href={`https://scholar.google.com/scholar?q=${encodeURIComponent(entry)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="jida-reference-scholar-link"
-                      >
-                        Google Scholar
-                      </a>
-                    </li>
-                  ))}
+                  {referenceEntries.map((entry, i) => {
+                    const directLink = extractReferenceLink(entry);
+                    return (
+                      <li key={i}>
+                        <p>{entry}</p>
+                        {directLink ? (
+                          <a
+                            href={directLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="jida-reference-scholar-link"
+                          >
+                            View source
+                          </a>
+                        ) : (
+                          <a
+                            href={`https://scholar.google.com/scholar?q=${encodeURIComponent(entry)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="jida-reference-scholar-link"
+                          >
+                            Search Google Scholar
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
               ) : (
                 <p className="jida-article-empty-note">No references listed for this article.</p>
