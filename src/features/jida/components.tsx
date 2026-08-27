@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown } from "lucide-react";
+import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown, Download, Mail, UserPlus } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -19,6 +19,7 @@ import {
   getAssignments,
   getReviewHistory,
   updateReviewProgress,
+  respondToAssignment,
   submitReview,
   getEditorSubmissions,
   assignReviewers,
@@ -30,6 +31,9 @@ import {
   postAnnouncement,
   getNotifications,
   deleteNotification,
+  sendReviewerInvitation,
+  getReviewerInvitations,
+  type ReviewerInvitation,
   getPublicIssues,
   getPublicArticles,
   adminGetUsers,
@@ -933,10 +937,11 @@ export function AuthorWorkspace() {
         <div className="jida-track-main">
           <div className="jida-track-head">
             <h3><HighlightMatch text={item.title} query={query} /></h3>
+            {item.isRevised && <span className="jida-badge info">Revised</span>}
             <span className={badgeClass(item.status)}>{statusLabel(item.status)}</span>
           </div>
           <p className="jida-track-meta">
-            Submitted {submitted} · <code>{item.id}</code>
+            Submitted {submitted}
           </p>
           {item.coAuthors && item.coAuthors.length > 0 && (
             <p className="jida-track-meta">
@@ -1098,21 +1103,21 @@ export function AuthorWorkspace() {
       </div>
 
       {activePanel === null && (
-        <div className="jida-action-panels">
-          <button type="button" className="jida-panel-card" onClick={() => setActivePanel("submit")}>
-            <span className="jida-panel-num">01</span>
-            <div className="jida-panel-info">
-              <strong>Submit Manuscript</strong>
-              <p>Provide core article details before editorial screening.</p>
-            </div>
-            <span className="jida-panel-arrow">→</span>
+        <div className="jida-action-launch">
+          <button
+            type="button"
+            className="jida-btn-primary jida-btn-icon jida-submit-cta"
+            onClick={() => setActivePanel("submit")}
+          >
+            <Plus size={18} />
+            Submit Manuscript
           </button>
         </div>
       )}
 
       {activePanel === "submit" && (
         <div className="jida-form-panel" ref={formPanelRef}>
-          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setSubmitMsg(null); }}>← Back to actions</button>
+          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setSubmitMsg(null); }}>← Back</button>
           <form className="jida-form" ref={submitRef} onSubmit={handleSubmit} encType="multipart/form-data">
             <div className="jida-form-header">
               <span>01</span>
@@ -1161,6 +1166,13 @@ export function AuthorWorkspace() {
               </label>
               <ReferencesPreview raw={referencesText} />
               <label>Manuscript file (PDF / DOCX)<input type="file" name="file" accept=".pdf,.docx" required /></label>
+              <label className="jida-checkbox jida-revised-check">
+                <input type="checkbox" name="isRevised" value="true" />
+                <span>
+                  Revised manuscript
+                  <small>Tells the editor and reviewers this is a revised version of earlier work.</small>
+                </span>
+              </label>
             </div>
 
             <div hidden={submitTab !== "coauthors"}>
@@ -1246,12 +1258,12 @@ export function AuthorWorkspace() {
         ) : (
           <>
             <div className="jida-track-list">
-              {manuscripts.slice(0, 3).map(renderManuscript)}
+              {manuscripts.slice(0, 1).map(renderManuscript)}
               {manuscripts.length === 0 && (
                 <p style={{ textAlign: "center", padding: "1rem" }}>No manuscripts found.</p>
               )}
             </div>
-            {manuscripts.length > 3 && (
+            {manuscripts.length > 1 && (
               <div className="jida-preview-footer">
                 <button type="button" onClick={() => setActiveView("tasks")}>
                   See all {manuscripts.length} manuscripts →
@@ -1347,7 +1359,34 @@ export function ReviewerWorkspace() {
   const [sortOrder, setSortOrder] = useState<"" | "az" | "za">("");
   const [historyQuery, setHistoryQuery] = useState("");
   const [historySortOrder, setHistorySortOrder] = useState<"" | "az" | "za">("");
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+  const [respondBusy, setRespondBusy] = useState(false);
   const formPanelRef = useRef<HTMLDivElement>(null);
+
+  async function refreshAll() {
+    const [a, h] = await Promise.all([getAssignments(), getReviewHistory()]);
+    setAssignments(a);
+    setHistory(h);
+  }
+
+  async function handleRespond(assignmentId: string, accept: boolean) {
+    if (!accept && !declineReason.trim()) {
+      setRespondingId(assignmentId);
+      return;
+    }
+    setRespondBusy(true);
+    try {
+      await respondToAssignment(assignmentId, accept, accept ? undefined : declineReason.trim());
+      setRespondingId(null);
+      setDeclineReason("");
+      await refreshAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send your response");
+    } finally {
+      setRespondBusy(false);
+    }
+  }
 
   function openPanel(panel: string, assignmentId: string) {
     setPresetAssignmentId(assignmentId);
@@ -1439,17 +1478,34 @@ export function ReviewerWorkspace() {
     }
   }
 
-  const pendingCount = assignments.filter((a) => a.progress !== "FINISHED_REVIEW").length;
+  // A pending assignment is an invitation the reviewer has not answered yet.
+  const pendingAssignments = assignments.filter((a) => (a.response ?? "PENDING") === "PENDING");
+  const invitationCount = pendingAssignments.length;
+  const acceptedAssignments = assignments.filter((a) => a.response === "ACCEPTED");
+  const pendingCount = acceptedAssignments.filter((a) => a.progress !== "FINISHED_REVIEW").length;
   const completedCount = assignments.filter((a) => a.progress === "FINISHED_REVIEW").length;
+  const soonMs = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  const dueSoonCount = acceptedAssignments.filter(
+    (a) => a.progress !== "FINISHED_REVIEW" && a.deadline && new Date(a.deadline).getTime() <= soonMs,
+  ).length;
   const reviewerTrend = weeklyTrend(assignments.map((a) => a.submittedAt));
   const reviewerActivity: ActivityEvent[] = [
     ...history.map((h) => ({
       id: `h-${h.id}`,
       title: "Review submitted",
-      detail: `${h.manuscriptTitle ?? "Manuscript"}${h.reviewedAt ? " · " + formatDateTime(h.reviewedAt) : ""}`,
-      sortKey: h.reviewedAt ?? "",
+      detail: `${h.manuscriptTitle ?? "Manuscript"}${h.reviewedAt ? " · " + formatDateTime(h.reviewedAt) : h.review?.createdAt ? " · " + formatDateTime(h.review.createdAt) : ""}`,
+      sortKey: h.reviewedAt ?? h.review?.createdAt ?? "",
     })),
+    // Accept / decline are actions with a date — surface them in the feed.
     ...assignments
+      .filter((a) => a.respondedAt && a.response && a.response !== "PENDING")
+      .map((a) => ({
+        id: `r-${a.id}`,
+        title: a.response === "ACCEPTED" ? "Assignment accepted" : "Assignment declined",
+        detail: `${a.manuscriptTitle ?? "Manuscript"} · ${formatDateTime(a.respondedAt!)}`,
+        sortKey: a.respondedAt ?? "",
+      })),
+    ...acceptedAssignments
       .filter((a) => a.progress !== "FINISHED_REVIEW")
       .map((a) => ({
         id: `a-${a.id}`,
@@ -1459,7 +1515,7 @@ export function ReviewerWorkspace() {
       })),
   ]
     .sort((x, y) => new Date(y.sortKey || 0).getTime() - new Date(x.sortKey || 0).getTime())
-    .slice(0, 5)
+    .slice(0, 6)
     .map(({ id, title, detail }) => ({ id, title, detail }));
 
   const REVIEWER_PROGRESS_ORDER: ReviewProgress[] = ["NOT_STARTED", "BEGIN_REVIEW", "IN_PROGRESS", "FINISHED_REVIEW"];
@@ -1548,8 +1604,16 @@ export function ReviewerWorkspace() {
           </td>
           <td data-label="Actions">
             <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
-              <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("review", a.id)}>Review</button>
-              <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("progress", a.id)}>Progress</button>
+              {a.response === "DECLINED" ? (
+                <span className="jida-badge danger">Declined</span>
+              ) : (a.response ?? "PENDING") === "PENDING" ? (
+                <span className="jida-badge warning">Awaiting your response</span>
+              ) : (
+                <>
+                  <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("review", a.id)}>Review</button>
+                  <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("progress", a.id)}>Progress</button>
+                </>
+              )}
               <ReminderButton manuscriptId={a.manuscriptId} />
             </div>
           </td>
@@ -1583,14 +1647,18 @@ export function ReviewerWorkspace() {
 
       <div className="jida-stat-cards">
         <StatCard
-          label="Assigned Reviews"
-          value={assignments.length}
+          label="Invitations"
+          value={invitationCount}
           trend={reviewerTrend}
-          onClick={() => { setProgressFilter(""); setActiveView("tasks"); }}
         />
         <StatCard
-          label="Pending"
+          label="Active Reviews"
           value={pendingCount}
+          onClick={() => { setProgressFilter("PENDING"); setActiveView("tasks"); }}
+        />
+        <StatCard
+          label="Due Soon"
+          value={dueSoonCount}
           onClick={() => { setProgressFilter("PENDING"); setActiveView("tasks"); }}
         />
         <StatCard
@@ -1603,9 +1671,47 @@ export function ReviewerWorkspace() {
       {loading && <p style={{ padding: "1rem" }}>Loading…</p>}
       {error && <p style={{ padding: "1rem", color: "red" }}>{error}</p>}
 
+      {pendingAssignments.length > 0 && (
+        <div className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">Action required</p><h2>Review invitations</h2></div>
+            <span className="jida-badge warning">{pendingAssignments.length}</span>
+          </div>
+          {pendingAssignments.map((a) => (
+            <div key={a.id} className="jida-invite-card">
+              <div>
+                <strong>{a.manuscriptTitle ?? "Manuscript"}</strong>
+                {a.manuscriptIsRevised && <span className="jida-badge info">Revised</span>}
+                <p className="jida-track-meta">Authors hidden · respond by {a.deadline?.slice(0, 10)}</p>
+              </div>
+              {respondingId === a.id ? (
+                <div className="jida-assignment-actions">
+                  <textarea
+                    className="jida-assignment-reason"
+                    placeholder="Why are you declining?"
+                    value={declineReason}
+                    onChange={(e) => setDeclineReason(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="jida-assignment-actions-row">
+                    <button type="button" className="jida-btn-secondary jida-btn-sm" onClick={() => { setRespondingId(null); setDeclineReason(""); }}>Back</button>
+                    <button type="button" className="jida-btn-danger jida-btn-sm" disabled={!declineReason.trim() || respondBusy} onClick={() => handleRespond(a.id, false)}>Send decline</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="jida-assignment-actions-row">
+                  <button type="button" className="jida-btn-primary jida-btn-sm" disabled={respondBusy} onClick={() => handleRespond(a.id, true)}>Accept</button>
+                  <button type="button" className="jida-btn-secondary jida-btn-sm" onClick={() => setRespondingId(a.id)}>Decline</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {activePanel === null && (
         <div className="jida-action-panels">
-          <button type="button" className="jida-panel-card" onClick={() => openPanel("review", assignments[0]?.id ?? "")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("review", acceptedAssignments[0]?.id ?? "")}>
             <span className="jida-panel-num">01</span>
             <div className="jida-panel-info">
               <strong>Submit Review Evaluation</strong>
@@ -1613,7 +1719,7 @@ export function ReviewerWorkspace() {
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
-          <button type="button" className="jida-panel-card" onClick={() => openPanel("progress", assignments[0]?.id ?? "")}>
+          <button type="button" className="jida-panel-card" onClick={() => openPanel("progress", acceptedAssignments[0]?.id ?? "")}>
             <span className="jida-panel-num">02</span>
             <div className="jida-panel-info">
               <strong>Update Review Progress</strong>
@@ -1726,8 +1832,10 @@ export function ReviewerWorkspace() {
       )}
 
       {activePanel === "progress" && (
-        <div className="jida-form-panel" ref={formPanelRef}>
-          <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setProgressMsg(null); }}>← Back to actions</button>
+        <ActionModal
+          title="Update Review Progress"
+          onClose={() => { setActivePanel(null); setProgressMsg(null); }}
+        >
           <form className="jida-form" onSubmit={handleProgress}>
             <div className="jida-form-header">
               <span>02</span>
@@ -1749,7 +1857,7 @@ export function ReviewerWorkspace() {
             </label>
             <button type="submit" className="jida-btn-primary" disabled={!presetAssignmentId}>Update Progress</button>
           </form>
-        </div>
+        </ActionModal>
       )}
 
       <div className="jida-grid-two">
@@ -1776,14 +1884,14 @@ export function ReviewerWorkspace() {
               </tr>
             </thead>
             <tbody>
-              {assignments.slice(0, 5).map(renderAssignmentRow)}
+              {assignments.slice(0, 2).map(renderAssignmentRow)}
               {assignments.length === 0 && !loading && (
                 <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        {assignments.length > 5 && (
+        {assignments.length > 2 && (
           <div className="jida-preview-footer">
             <button type="button" onClick={() => setActiveView("tasks")}>
               See all {assignments.length} assignments →
@@ -1943,6 +2051,19 @@ export function EditorWorkspace() {
   const [announcementHistory, setAnnouncementHistory] = useState<NotificationItem[]>([]);
   const formPanelRef = useRef<HTMLDivElement>(null);
 
+  // Peer Review — reviewer-invitation tracking + assignment-table filters.
+  const [invitations, setInvitations] = useState<ReviewerInvitation[]>([]);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviteSending, setInviteSending] = useState(false);
+  const [prSearch, setPrSearch] = useState("");
+  const [prProgressFilter, setPrProgressFilter] = useState("");
+  const [prStatusFilter, setPrStatusFilter] = useState("");
+  const [showPublishForm, setShowPublishForm] = useState(false);
+  // Final-screening modal — track the picked manuscript so its reviewer
+  // recommendations can be shown, and the chosen outcome (button grid).
+  const [finalPickId, setFinalPickId] = useState("");
+  const [finalDecision, setFinalDecision] = useState("");
+
   function openPanel(panel: string, manuscriptId: string) {
     setPresetManuscriptId(manuscriptId);
     setActivePanel(panel);
@@ -1980,6 +2101,43 @@ export function EditorWorkspace() {
 
   useEffect(() => { fetchSubmissions(); }, []);
 
+  async function fetchInvitations() {
+    try {
+      setInvitations(await getReviewerInvitations());
+    } catch {
+      /* non-blocking */
+    }
+  }
+
+  useEffect(() => {
+    if (activeView === "peer-review") fetchInvitations();
+  }, [activeView]);
+
+  async function handleSendInvitation(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (inviteSending) return;
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const email = String(fd.get("email") ?? "").trim();
+    const message = String(fd.get("message") ?? "").trim();
+    if (!email || !message) {
+      setInviteMsg("An email address and a message are both required.");
+      return;
+    }
+    setInviteSending(true);
+    setInviteMsg(null);
+    try {
+      await sendReviewerInvitation(email, message);
+      setInviteMsg(`Invitation sent to ${email}.`);
+      form.reset();
+      fetchInvitations();
+    } catch (err) {
+      setInviteMsg(err instanceof Error ? err.message : "Could not send the invitation.");
+    } finally {
+      setInviteSending(false);
+    }
+  }
+
   useEffect(() => {
     if (activeView === "announcements") fetchAnnouncementHistory();
   }, [activeView]);
@@ -1992,9 +2150,20 @@ export function EditorWorkspace() {
     const reviewerId = String(fd.get("reviewerId") ?? "").trim();
     const deadline = String(fd.get("deadline") ?? "").trim();
     if (!manuscriptId || !reviewerId || !deadline) { setAssignMsg("All fields required"); return; }
+
+    // Mirror the backend cap: a manuscript may carry at most two reviewers.
+    const target = submissions.find((s) => s.id === manuscriptId);
+    const existing = target?.assignments ?? [];
+    const alreadyOn = existing.some((a) => a.reviewer?.id === reviewerId);
+    if (!alreadyOn && existing.length >= 2) {
+      setAssignMsg("This manuscript already has two reviewers.");
+      return;
+    }
+
     try {
       await assignReviewers(manuscriptId, [{ reviewerId, deadline }]);
       setAssignMsg("Reviewer assigned successfully.");
+      setActivePanel(null);
       fetchSubmissions();
     } catch (err) {
       setAssignMsg(err instanceof Error ? err.message : "Assignment failed");
@@ -2178,12 +2347,42 @@ export function EditorWorkspace() {
     (s) => s.status === "UNDER_REVIEW" && (s.assignments ?? []).some((a) => a.review),
   );
   const assignableQueue = submissions.filter(
-    (s) => s.status === "UNDER_REVIEW" && (s.assignments ?? []).length === 0,
+    (s) => s.status === "UNDER_REVIEW" && (s.assignments ?? []).length < 2,
   );
   const acceptedQueue = submissions.filter((s) => s.status === "ACCEPTED");
   const allAssignments = submissions.flatMap((s) =>
     (s.assignments ?? []).map((a) => ({ submission: s, assignment: a })),
   );
+
+  // Peer Review dashboard metrics — all derived from the assignments already
+  // loaded with the submissions.
+  const now = Date.now();
+  const prTotal = allAssignments.length;
+  const prCompleted = allAssignments.filter(({ assignment }) => assignment.review).length;
+  const prActive = allAssignments.filter(
+    ({ assignment }) => assignment.response === "ACCEPTED" && !assignment.review,
+  ).length;
+  const prAwaitingAcceptance = allAssignments.filter(
+    ({ assignment }) => (assignment.response ?? "PENDING") === "PENDING",
+  ).length;
+  const prOverdue = allAssignments.filter(
+    ({ assignment }) =>
+      !assignment.review && assignment.deadline && new Date(assignment.deadline).getTime() < now,
+  ).length;
+  const prCompletionRate = prTotal ? Math.round((prCompleted / prTotal) * 100) : 0;
+
+  const filteredPeerAssignments = allAssignments.filter(({ submission, assignment }) => {
+    if (prSearch) {
+      const hay = `${submission.title} ${assignment.reviewer?.name ?? ""} ${assignment.reviewer?.email ?? ""}`.toLowerCase();
+      if (!hay.includes(prSearch.toLowerCase())) return false;
+    }
+    if (prProgressFilter && assignment.progress !== prProgressFilter) return false;
+    if (prStatusFilter === "SUBMITTED" && !assignment.review) return false;
+    if (prStatusFilter === "OUTSTANDING" && assignment.review) return false;
+    if (prStatusFilter === "AWAITING" && (assignment.response ?? "PENDING") !== "PENDING") return false;
+    if (prStatusFilter === "DECLINED" && assignment.response !== "DECLINED") return false;
+    return true;
+  });
 
   const EDITOR_STATUS_ORDER = ["SUBMITTED", "UNDER_REVIEW", "REVISION_REQUIRED", "ACCEPTED", "REJECTED", "PUBLISHED"];
 
@@ -2245,6 +2444,7 @@ export function EditorWorkspace() {
         <div className="jida-track-main">
           <div className="jida-track-head">
             <h3><HighlightMatch text={s.title} query={query} /></h3>
+            {s.isRevised && <span className="jida-badge info">Revised</span>}
             <span className={badgeClass(s.status)}>{statusLabel(s.status)}</span>
           </div>
           <p className="jida-track-meta">
@@ -2255,8 +2455,7 @@ export function EditorWorkspace() {
             >
               {s.authorName ?? "—"}
             </AuthorHover>
-            {s.submittedAt ? ` · submitted ${s.submittedAt.slice(0, 10)}` : ""} ·{" "}
-            <code>{s.id}</code>
+            {s.submittedAt ? ` · submitted ${s.submittedAt.slice(0, 10)}` : ""}
           </p>
           {s.coAuthors && s.coAuthors.length > 0 && (
             <p className="jida-track-meta">
@@ -2357,13 +2556,15 @@ export function EditorWorkspace() {
           <ReminderButton manuscriptId={s.id} />
           <button
             type="button"
-            className="jida-btn-secondary"
+            className="jida-btn-secondary jida-btn-icon-only"
+            aria-label="Download manuscript"
+            title="Download manuscript"
             onClick={() =>
               downloadFile(`/api/editor/manuscripts/${s.id}/download`, `${s.title}.pdf`)
                 .catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
             }
           >
-            Download
+            <Download size={16} />
           </button>
           {canInitialScreen && (
             <button type="button" className="jida-btn-secondary" onClick={() => openPanel("decision-initial", s.id)}>
@@ -2378,7 +2579,6 @@ export function EditorWorkspace() {
               Final Screening
             </button>
           )}
-          <button type="button" className="jida-btn-secondary" onClick={() => openPanel("upload", s.id)}>Upload</button>
         </aside>
       </article>
     );
@@ -2424,16 +2624,16 @@ export function EditorWorkspace() {
       <div className="jida-grid-two">
       <section className="jida-card">
         <div className="jida-section-heading">
-          <div><p className="jida-section-kicker">Submissions</p><h2>Editorial Pipeline</h2></div>
+          <div><p className="jida-section-kicker">Submissions</p><h2>Editorial queue</h2></div>
           <span className="jida-badge">{submissions.length} submissions</span>
         </div>
         <div className="jida-track-list">
-          {submissions.slice(0, 3).map(renderSubmission)}
+          {submissions.slice(0, 1).map(renderSubmission)}
           {submissions.length === 0 && !loading && (
             <p style={{ textAlign: "center", padding: "1rem" }}>No submissions found.</p>
           )}
         </div>
-        {submissions.length > 3 && (
+        {submissions.length > 1 && (
           <div className="jida-preview-footer">
             <button type="button" onClick={() => setActiveView("manuscripts")}>
               See all {submissions.length} submissions →
@@ -2458,7 +2658,7 @@ export function EditorWorkspace() {
       {activeView === "manuscripts" && (
         <section className="jida-card">
           <div className="jida-section-heading">
-            <div><p className="jida-section-kicker">Submissions</p><h2>Editorial Pipeline</h2></div>
+            <div><p className="jida-section-kicker">Submissions</p><h2>Editorial queue</h2></div>
             <span className="jida-badge">{filteredSubmissions.length} submissions</span>
           </div>
 
@@ -2502,51 +2702,60 @@ export function EditorWorkspace() {
           <div>
             <p className="jida-section-kicker">Editor Workspace</p>
             <h2>Peer Review</h2>
-            <p>Assign reviewers and track how each manuscript's review assignments are progressing.</p>
+            <p>Monitor blind review assignments and reviewer performance.</p>
+          </div>
+          <div className="jida-page-title-actions">
+            <button
+              type="button"
+              className="jida-btn-secondary jida-btn-icon"
+              onClick={() => { setInviteMsg(null); setActivePanel("invite"); }}
+            >
+              <Mail size={16} /> Send Invitation
+            </button>
+            <button
+              type="button"
+              className="jida-btn-primary jida-btn-icon"
+              onClick={() => { setAssignMsg(null); openPanel("assign", ""); }}
+            >
+              <UserPlus size={16} /> Assign reviewers
+            </button>
           </div>
         </div>
 
-        <div className="jida-form-panel" ref={formPanelRef}>
-          <form className="jida-form" onSubmit={handleAssign}>
-            <div className="jida-form-header">
-              <span>01</span>
-              <div><h3>Assign Reviewer</h3><p>Link a reviewer to a manuscript with a deadline — manuscripts that passed initial screening only.</p></div>
-            </div>
-            {assignMsg && <ActionResultMessage message={assignMsg} isSuccess={assignMsg === "Reviewer assigned successfully."} />}
-            <label>
-              Manuscript
-              <select name="manuscriptId" defaultValue={presetManuscriptId} required>
-                <option value="" disabled>Select a manuscript</option>
-                {assignableQueue.map((s) => (
-                  <option key={s.id} value={s.id}>{s.title}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Reviewer
-              {reviewers.length > 0 ? (
-                <select name="reviewerId" defaultValue="" required>
-                  <option value="" disabled>Select a reviewer</option>
-                  {reviewers.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {[r.firstName, r.lastName].filter(Boolean).join(" ") || r.email} — {r.email}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input name="reviewerId" placeholder="Reviewer account ID" required />
-              )}
-            </label>
-            <label>Deadline<input type="date" name="deadline" required /></label>
-            <button type="submit" className="jida-btn-primary">Assign Reviewer</button>
-          </form>
+        <div className="jida-stat-cards">
+          <StatCard label="Active Reviews" value={prActive} />
+          <StatCard label="Awaiting Acceptance" value={prAwaitingAcceptance} />
+          <StatCard label="Overdue" value={prOverdue} />
+          <StatCard label="Completion Rate" value={`${prCompletionRate}%`} />
         </div>
 
         <section className="jida-card">
           <div className="jida-section-heading">
-            <div><p className="jida-section-kicker">Assignments</p><h2>Review Assignments</h2></div>
-            <span className="jida-badge">{allAssignments.length} assignments</span>
+            <div><p className="jida-section-kicker">Assignments</p><h2>Review assignments</h2></div>
+            <span className="jida-badge">{filteredPeerAssignments.length} of {allAssignments.length}</span>
           </div>
+
+          <div className="jida-toolbar">
+            <input
+              placeholder="Search manuscript or reviewer…"
+              value={prSearch}
+              onChange={(e) => setPrSearch(e.target.value)}
+            />
+            <select value={prProgressFilter} onChange={(e) => setPrProgressFilter(e.target.value)}>
+              <option value="">All progress</option>
+              {["NOT_STARTED", "BEGIN_REVIEW", "IN_PROGRESS", "FINISHED_REVIEW"].map((p) => (
+                <option key={p} value={p}>{statusLabel(p)}</option>
+              ))}
+            </select>
+            <select value={prStatusFilter} onChange={(e) => setPrStatusFilter(e.target.value)}>
+              <option value="">All review status</option>
+              <option value="SUBMITTED">Report submitted</option>
+              <option value="OUTSTANDING">Report outstanding</option>
+              <option value="AWAITING">Awaiting acceptance</option>
+              <option value="DECLINED">Declined</option>
+            </select>
+          </div>
+
           <div className="jida-table-wrap">
             <table className="jida-table">
               <thead>
@@ -2555,26 +2764,145 @@ export function EditorWorkspace() {
                   <th>Reviewer</th>
                   <th>Deadline</th>
                   <th>Progress</th>
-                  <th>Review</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {allAssignments.map(({ submission, assignment }) => (
+                {filteredPeerAssignments.map(({ submission, assignment }) => (
                   <tr key={assignment.id}>
                     <td data-label="Manuscript">{submission.title}</td>
                     <td data-label="Reviewer">{assignment.reviewer?.name ?? assignment.reviewer?.email ?? "—"}</td>
                     <td data-label="Deadline">{assignment.deadline?.slice(0, 10)}</td>
                     <td data-label="Progress"><span className={badgeClass(assignment.progress)}>{statusLabel(assignment.progress)}</span></td>
-                    <td data-label="Review">{assignment.review ? <span className="jida-badge success">Submitted</span> : <span className="jida-badge warning">Outstanding</span>}</td>
+                    <td data-label="Status">
+                      {assignment.review ? (
+                        <span className="jida-badge success">Report submitted</span>
+                      ) : assignment.response === "DECLINED" ? (
+                        <span className="jida-badge danger" title={assignment.declineReason ?? undefined}>Declined</span>
+                      ) : assignment.response === "ACCEPTED" ? (
+                        <span className="jida-badge info">Accepted · in progress</span>
+                      ) : (
+                        <span className="jida-badge warning">Awaiting acceptance</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
-                {allAssignments.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No review assignments yet.</td></tr>
+                {filteredPeerAssignments.length === 0 && (
+                  <tr><td colSpan={5} style={{ textAlign: "center", padding: "1rem" }}>No matching assignments.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </section>
+
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">Recruitment</p><h2>Sent invitations</h2></div>
+            <span className="jida-badge">{invitations.length}</span>
+          </div>
+          {invitations.length === 0 ? (
+            <p className="jida-article-empty-note">No reviewer invitations sent yet.</p>
+          ) : (
+            <div className="jida-table-wrap">
+              <table className="jida-table">
+                <thead>
+                  <tr><th>Email</th><th>Sent</th><th>Status</th><th>Note</th></tr>
+                </thead>
+                <tbody>
+                  {invitations.map((inv) => (
+                    <tr key={inv.id}>
+                      <td data-label="Email">{inv.email}</td>
+                      <td data-label="Sent">{inv.createdAt.slice(0, 10)}</td>
+                      <td data-label="Status">
+                        <span className={
+                          inv.status === "ACCEPTED" ? "jida-badge success"
+                            : inv.status === "DECLINED" ? "jida-badge danger"
+                            : inv.status === "EXPIRED" ? "jida-badge" : "jida-badge warning"
+                        }>{statusLabel(inv.status)}</span>
+                      </td>
+                      <td data-label="Note">{inv.status === "DECLINED" ? (inv.declineReason ?? "—") : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {activePanel === "assign" && (
+          <ActionModal title="Assign reviewers" onClose={() => { setActivePanel(null); setAssignMsg(null); }}>
+            <form className="jida-form" onSubmit={handleAssign}>
+              <p className="jida-form-hint">A manuscript may have at most two reviewers.</p>
+              {assignMsg && <ActionResultMessage message={assignMsg} isSuccess={assignMsg === "Reviewer assigned successfully."} />}
+              <label>
+                Manuscript
+                <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                  <option value="" disabled>Select a manuscript</option>
+                  {assignableQueue.map((s) => {
+                    const count = s.assignments?.length ?? 0;
+                    return (
+                      <option key={s.id} value={s.id} disabled={count >= 2}>
+                        {s.title}{count > 0 ? ` — ${count}/2 assigned` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <label>
+                Reviewer
+                {reviewers.length > 0 ? (
+                  <select name="reviewerId" defaultValue="" required>
+                    <option value="" disabled>Select a reviewer</option>
+                    {reviewers.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {[r.firstName, r.lastName].filter(Boolean).join(" ") || r.email} — {r.email}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input name="reviewerId" placeholder="Reviewer account ID" required />
+                )}
+              </label>
+              <label>Deadline<input type="date" name="deadline" required /></label>
+              <button type="submit" className="jida-btn-primary">Assign reviewer</button>
+            </form>
+          </ActionModal>
+        )}
+
+        {activePanel === "invite" && (
+          <ActionModal title="Invite a reviewer" onClose={() => { setActivePanel(null); setInviteMsg(null); }}>
+            <form className="jida-gmail-compose" onSubmit={handleSendInvitation}>
+              {inviteMsg && (
+                <ActionResultMessage message={inviteMsg} isSuccess={inviteMsg.startsWith("Invitation sent")} />
+              )}
+              <label className="jida-gmail-row">
+                <span>To</span>
+                <input type="email" name="email" placeholder="name@university.edu" required />
+              </label>
+              <label className="jida-gmail-row">
+                <span>Subject</span>
+                <input type="text" value="Invitation to review for JIDA" readOnly />
+              </label>
+              <textarea
+                name="message"
+                className="jida-gmail-body"
+                rows={8}
+                required
+                defaultValue={
+                  "Hello,\n\nI'm an editor at the Journal of Inter-Discourse Academia. I'd like to invite you to join our reviewer panel — your expertise would be a great fit for manuscripts we handle.\n\nIf you're willing, click the link in this email to accept and set up your reviewer account. You can decline just as easily.\n\nThank you for considering it."
+                }
+              />
+              <div className="jida-modal-actions">
+                <button type="button" className="jida-btn-secondary" onClick={() => setActivePanel(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="jida-btn-primary" disabled={inviteSending}>
+                  {inviteSending ? "Sending…" : "Send invitation"}
+                </button>
+              </div>
+            </form>
+          </ActionModal>
+        )}
         </>
       )}
 
@@ -2644,10 +2972,21 @@ export function EditorWorkspace() {
           </ActionModal>
         )}
 
-        {activePanel === "decision-final" && (
+        {activePanel === "decision-final" && (() => {
+          const picked = finalScreeningQueue.find((s) => s.id === (finalPickId || presetManuscriptId));
+          const reviews = (picked?.assignments ?? []).filter((a) => a.review);
+          const recs = reviews.map((a) => a.review!.recommendation);
+          const conflict = recs.length >= 2 && new Set(recs).size > 1;
+          const DECISIONS: { value: string; label: string }[] = [
+            { value: "ACCEPT", label: "Accept" },
+            { value: "REQUEST_REVISION", label: "Minor Revision" },
+            { value: "REQUEST_REVISION", label: "Major Revision" },
+            { value: "REJECT", label: "Reject" },
+          ];
+          return (
           <ActionModal
             title="Editorial Decision — Final Screening"
-            onClose={() => { setActivePanel(null); setDecisionMsg(null); }}
+            onClose={() => { setActivePanel(null); setDecisionMsg(null); setFinalDecision(""); setFinalPickId(""); }}
           >
             <form className="jida-form" onSubmit={(e) => handleDecision(e, "FINAL_SCREENING")}>
               <div className="jida-form-header">
@@ -2659,27 +2998,62 @@ export function EditorWorkspace() {
               )}
               <label>
                 Manuscript
-                <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                <select
+                  name="manuscriptId"
+                  value={finalPickId || presetManuscriptId}
+                  onChange={(e) => { setFinalPickId(e.target.value); setFinalDecision(""); }}
+                  required
+                >
                   <option value="" disabled>Select a manuscript</option>
                   {finalScreeningQueue.map((s) => (
                     <option key={s.id} value={s.id}>{s.title}</option>
                   ))}
                 </select>
               </label>
-              <label>
-                Decision
-                <select name="decision" defaultValue="">
-                  <option value="" disabled>Select decision</option>
-                  <option value="ACCEPT">Accept</option>
-                  <option value="REJECT">Reject</option>
-                  <option value="REQUEST_REVISION">Request Revision</option>
-                </select>
-              </label>
+
+              {reviews.length > 0 && (
+                <div className={`jida-review-verdicts${conflict ? " conflict" : ""}`}>
+                  {conflict && (
+                    <p className="jida-alert">
+                      Reviewers disagree. The final decision rests with the editor.
+                    </p>
+                  )}
+                  {reviews.map((a, i) => (
+                    <p key={a.id}>
+                      <strong>Reviewer {i + 1}:</strong>{" "}
+                      <span className={badgeClass(a.review!.recommendation)}>
+                        {statusLabel(a.review!.recommendation)}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <p className="jida-field-label">Decision</p>
+              <div className="jida-decision">
+                {DECISIONS.map((d) => (
+                  <button
+                    type="button"
+                    key={d.label}
+                    className={finalDecision === d.label ? "active" : ""}
+                    onClick={() => setFinalDecision(d.label)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="hidden"
+                name="decision"
+                value={DECISIONS.find((d) => d.label === finalDecision)?.value ?? ""}
+              />
+
               <label>Comments (visible to the reviewer and other editors)<textarea name="notes" rows={3} placeholder="Explain the reasoning behind this decision" /></label>
-              <button type="submit" className="jida-btn-primary">Record Decision</button>
+              <button type="submit" className="jida-btn-primary" disabled={!finalDecision}>Send decision</button>
             </form>
           </ActionModal>
-        )}
+          );
+        })()}
         </>
       )}
 
@@ -2691,8 +3065,17 @@ export function EditorWorkspace() {
             <h2>Publication</h2>
             <p>Publish accepted manuscripts to a journal issue, and optionally send back an edited file.</p>
           </div>
+          <button
+            type="button"
+            className="jida-btn-primary jida-btn-icon"
+            aria-expanded={showPublishForm}
+            onClick={() => setShowPublishForm((v) => !v)}
+          >
+            <Plus size={16} /> Publish a manuscript
+          </button>
         </div>
 
+        {showPublishForm && (
         <div className="jida-form-panel" ref={formPanelRef}>
           <form className="jida-form" onSubmit={handlePublish}>
             <div className="jida-form-header">
@@ -2760,6 +3143,7 @@ export function EditorWorkspace() {
             <button type="submit" className="jida-btn-primary">Publish to Journal Issue</button>
           </form>
         </div>
+        )}
 
         <section className="jida-card">
           <div className="jida-section-heading">
@@ -3547,10 +3931,12 @@ export function ArticleCiteShare({ citation, url }: { citation: string; url: str
 
 // ─── AdminWorkspace ────────────────────────────────────────────────────────
 
-type AdminTab = "users" | "author" | "reviewer" | "editor";
+/** "" = the Overview (no peek tab active). The sidebar's Dashboard / Users
+ * items own the overview and user-management screens now, so they are no
+ * longer duplicated as tabs here. */
+type AdminTab = "" | "author" | "reviewer" | "editor";
 
-const ADMIN_TABS: { id: AdminTab; label: string }[] = [
-  { id: "users",    label: "User Management" },
+const ADMIN_TABS: { id: Exclude<AdminTab, "">; label: string }[] = [
   { id: "author",   label: "Author Tasks" },
   { id: "reviewer", label: "Reviewer Tasks" },
   { id: "editor",   label: "Editor Tasks" },
@@ -3668,12 +4054,15 @@ function RoleEditor({ user, onSaved }: { user: AdminUser; onSaved: () => void })
 }
 
 export function AdminWorkspace() {
-  const [activeTab, setActiveTab] = useState<AdminTab>("users");
+  const [activeTab, setActiveTab] = useState<AdminTab>("");
   const [users, setUsers]         = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError]     = useState<string | null>(null);
   const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [creating, setCreating]   = useState(false);
+  /** Opens the Create User dialog — a portaled modal, like the editor's
+   * "Assign reviewers" / "Send Invitation" actions. */
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const createRef = useRef<HTMLFormElement>(null);
@@ -3699,9 +4088,10 @@ export function AdminWorkspace() {
     }
   }
 
+  // The Overview and User Management screens both read the user directory.
   useEffect(() => {
-    if (activeTab === "users") fetchUsers();
-  }, [activeTab]);
+    if ((activeView === "dashboard" || activeView === "tasks") && activeTab === "") fetchUsers();
+  }, [activeView, activeTab]);
 
   useEffect(() => {
     if (activeView !== "settings") return;
@@ -3784,12 +4174,25 @@ export function AdminWorkspace() {
     }
   }
 
-  const roster: TeamPerson[] = users.map((u) => ({
-    name: u.name || u.email,
-    email: u.email,
-    affiliation: u.institution,
-    roleLabel: ROLE_LABELS[u.role] ?? u.role,
-  }));
+  // Admin Overview metrics — all from the user directory already loaded.
+  const staffRoles: UserRole[] = ["EDITOR", "CHIEF_EDITOR", "ASSOCIATE_EDITOR", "ADMIN"];
+  const countRole = (r: UserRole) => users.filter((u) => (u.roles?.length ? u.roles : [u.role]).includes(r)).length;
+  const authorCount = countRole("AUTHOR");
+  const reviewerCount = countRole("REVIEWER");
+  const staffCount = users.filter((u) => (u.roles?.length ? u.roles : [u.role]).some((r) => staffRoles.includes(r))).length;
+  const activeCount = users.filter((u) => u.isActive !== false).length;
+  const recentlyActiveCount = users.filter(
+    (u) => u.lastLoginAt && Date.now() - new Date(u.lastLoginAt).getTime() < 7 * 24 * 60 * 60 * 1000,
+  ).length;
+  const pct = (n: number) => (users.length ? Math.round((n / users.length) * 100) : 0);
+  const adminActivity: ActivityEvent[] = [...users]
+    .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+    .slice(0, 6)
+    .map((u) => ({
+      id: u.id,
+      title: "Account created",
+      detail: `${u.name || u.email} · ${(u.roles?.length ? u.roles : [u.role]).map((r) => ROLE_LABELS[r] ?? r).join(", ")}${u.createdAt ? " · " + formatDateTime(u.createdAt) : ""}`,
+    }));
 
   const filteredUsers = users.filter((u) => {
     if (roleFilter && !(u.roles?.length ? u.roles : [u.role]).includes(roleFilter as UserRole)) return false;
@@ -3800,13 +4203,144 @@ export function AdminWorkspace() {
     return true;
   });
 
+  const overviewSection = (
+    <section className="jida-workspace">
+      <div className="jida-page-title">
+        <div>
+          <p className="jida-section-kicker">Admin · Overview</p>
+          <h2>Platform at a glance</h2>
+          <p>Users, account health, and recent administrative activity.</p>
+        </div>
+        <button type="button" className="jida-btn-primary jida-btn-icon" onClick={() => { setCreateMsg(null); setShowCreateForm(true); }}>
+          <Plus size={16} /> Create User
+        </button>
+      </div>
+
+      <div className="jida-stat-cards">
+        <StatCard label="Total Users" value={users.length} trend={weeklyTrend(users.map((u) => u.createdAt))} onClick={() => setActiveView("tasks")} />
+        <StatCard label="Authors" value={authorCount} onClick={() => { setRoleFilter("AUTHOR"); setActiveView("tasks"); }} />
+        <StatCard label="Reviewers" value={reviewerCount} onClick={() => { setRoleFilter("REVIEWER"); setActiveView("tasks"); }} />
+        <StatCard label="Staff" value={staffCount} onClick={() => setActiveView("tasks")} />
+      </div>
+
+      <div className="jida-grid-two">
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">Health</p><h2>Account health</h2></div>
+          </div>
+          {usersLoading ? (
+            <p style={{ padding: "1rem" }}>Loading…</p>
+          ) : (
+            <div className="jida-admin-health">
+              <p className="jida-meta">Active accounts</p>
+              <div className="jida-bar"><span style={{ width: `${pct(activeCount)}%` }} /></div>
+              <p className="jida-meta">{activeCount} of {users.length} ({pct(activeCount)}%)</p>
+
+              <p className="jida-meta">Signed in this week</p>
+              <div className="jida-bar"><span style={{ width: `${pct(recentlyActiveCount)}%` }} /></div>
+              <p className="jida-meta">{recentlyActiveCount} of {users.length} ({pct(recentlyActiveCount)}%)</p>
+
+              <p className="jida-meta">Reviewers</p>
+              <div className="jida-bar"><span style={{ width: `${pct(reviewerCount)}%` }} /></div>
+              <p className="jida-meta">{reviewerCount} of {users.length} ({pct(reviewerCount)}%)</p>
+            </div>
+          )}
+        </section>
+
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">Activity</p><h2>Recent administrative activity</h2></div>
+          </div>
+          <ActivityTimeline items={adminActivity} emptyLabel="No activity yet." />
+        </section>
+      </div>
+    </section>
+  );
+
+  const createUserModal = showCreateForm && (
+    <ActionModal
+      title="Create User"
+      onClose={() => { setShowCreateForm(false); setCreateMsg(null); }}
+    >
+      <form className="jida-admin-create-form" ref={createRef} onSubmit={handleCreateUser}>
+        {createMsg && (
+          <p className={createMsg.ok ? "jida-badge success" : "jida-badge danger"} style={{ padding: "0.55rem 0.8rem", borderRadius: "8px", display: "block" }}>
+            {createMsg.text}
+          </p>
+        )}
+
+        <div className="jida-admin-create-grid">
+          <label>
+            Full Name
+            <input name="name" type="text" placeholder="e.g. Alice Umutoni" />
+          </label>
+          <label>
+            Email <span className="jida-required">*</span>
+            <input name="email" type="email" placeholder="user@example.com" required />
+          </label>
+          <label>
+            Password <span className="jida-required">*</span>
+            <input name="password" type="password" placeholder="Minimum 8 characters" minLength={8} required />
+          </label>
+          <label>
+            Primary Role <span className="jida-required">*</span>
+            <select name="role" defaultValue="AUTHOR" required>
+              {ASSIGNABLE_ROLES.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Institution
+            <input name="institution" type="text" placeholder="University or affiliation" />
+          </label>
+        </div>
+
+        <fieldset className="jida-review-section">
+          <legend>Additional Roles</legend>
+          <p className="jida-form-hint">
+            An account can hold several roles. A chief editor already carries editor,
+            reviewer and author rights, so there is no need to tick those.
+          </p>
+          <div className="jida-role-checkboxes">
+            {ASSIGNABLE_ROLES.filter((r) => r !== "ADMIN").map((r) => (
+              <label key={r} className="jida-checkbox">
+                <input type="checkbox" name="extraRoles" value={r} />
+                {ROLE_LABELS[r]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="jida-modal-actions">
+          <button type="button" className="jida-btn-secondary" onClick={() => { setShowCreateForm(false); setCreateMsg(null); }}>
+            Close
+          </button>
+          <button type="submit" className="jida-btn-primary" disabled={creating}>
+            {creating ? "Creating…" : "Create User"}
+          </button>
+        </div>
+      </form>
+    </ActionModal>
+  );
+
   return (
     <div className="jida-dash-layout">
-      <DashboardSidebar role="ADMIN" active={activeView} onNavigate={setActiveView} showTeam={true} showRoles={true} showSettings={true} />
+      <DashboardSidebar
+        role="ADMIN"
+        active={activeView}
+        onNavigate={(v) => { setActiveView(v); if (v === "dashboard") setActiveTab(""); }}
+        showTeam={false}
+        showRoles={true}
+        showSettings={true}
+      />
       <div className="jida-dash-content">
-    {(activeView === "dashboard" || activeView === "tasks") && (
+    {createUserModal}
+
+    {/* Sidebar "Dashboard" → the Overview. A peek into the author / reviewer /
+        editor dashboards stays available as tabs above it. */}
+    {activeView === "dashboard" && (
     <>
-      {/* ── Admin tab bar ─────────────────────────────────────── */}
       <div className="jida-admin-tabbar">
         <span className="jida-admin-tabbar-label">Admin</span>
         <nav className="jida-admin-tabs">
@@ -3815,7 +4349,7 @@ export function AdminWorkspace() {
               key={tab.id}
               type="button"
               className={`jida-admin-tab${activeTab === tab.id ? " active" : ""}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab(activeTab === tab.id ? "" : tab.id)}
             >
               {tab.label}
             </button>
@@ -3823,8 +4357,16 @@ export function AdminWorkspace() {
         </nav>
       </div>
 
-      {/* ── User Management ───────────────────────────────────── */}
-      {activeTab === "users" && (
+      {activeTab === "" && overviewSection}
+      {activeTab === "author"   && <div className="jida-nested-workspace"><AuthorWorkspace /></div>}
+      {activeTab === "reviewer" && <div className="jida-nested-workspace"><ReviewerWorkspace /></div>}
+      {activeTab === "editor"   && <div className="jida-nested-workspace"><EditorWorkspace /></div>}
+    </>
+    )}
+
+    {/* Sidebar "Users" → user management. */}
+    {activeView === "tasks" && (
+      <>
         <section className="jida-workspace">
           <div className="jida-page-title">
             <div>
@@ -3832,6 +4374,9 @@ export function AdminWorkspace() {
               <h2>Manage system users</h2>
               <p>Create author, reviewer, or editor accounts and manage all registered users.</p>
             </div>
+            <button type="button" className="jida-btn-primary jida-btn-icon" onClick={() => { setCreateMsg(null); setShowCreateForm(true); }}>
+              <Plus size={16} /> Create User
+            </button>
           </div>
 
           <div className="jida-stat-cards">
@@ -3852,71 +4397,6 @@ export function AdminWorkspace() {
               onClick={() => { setRoleFilter("REVIEWER"); usersTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
             />
           </div>
-
-          {/* Create user form */}
-          <section className="jida-card">
-            <div className="jida-section-heading">
-              <div>
-                <p className="jida-section-kicker">New Account</p>
-                <h2>Create User</h2>
-              </div>
-            </div>
-
-            <form className="jida-admin-create-form" ref={createRef} onSubmit={handleCreateUser}>
-              {createMsg && (
-                <p className={createMsg.ok ? "jida-badge success" : "jida-badge danger"} style={{ padding: "0.55rem 0.8rem", borderRadius: "8px", display: "block" }}>
-                  {createMsg.text}
-                </p>
-              )}
-
-              <div className="jida-admin-create-grid">
-                <label>
-                  Full Name
-                  <input name="name" type="text" placeholder="e.g. Alice Umutoni" />
-                </label>
-                <label>
-                  Email <span className="jida-required">*</span>
-                  <input name="email" type="email" placeholder="user@example.com" required />
-                </label>
-                <label>
-                  Password <span className="jida-required">*</span>
-                  <input name="password" type="password" placeholder="Minimum 8 characters" minLength={8} required />
-                </label>
-                <label>
-                  Primary Role <span className="jida-required">*</span>
-                  <select name="role" defaultValue="AUTHOR" required>
-                    {ASSIGNABLE_ROLES.map((r) => (
-                      <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Institution
-                  <input name="institution" type="text" placeholder="University or affiliation" />
-                </label>
-              </div>
-
-              <fieldset className="jida-review-section">
-                <legend>Additional Roles</legend>
-                <p className="jida-form-hint">
-                  An account can hold several roles. A chief editor already carries editor,
-                  reviewer and author rights, so there is no need to tick those.
-                </p>
-                <div className="jida-role-checkboxes">
-                  {ASSIGNABLE_ROLES.filter((r) => r !== "ADMIN").map((r) => (
-                    <label key={r} className="jida-checkbox">
-                      <input type="checkbox" name="extraRoles" value={r} />
-                      {ROLE_LABELS[r]}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <button type="submit" className="jida-btn-primary" disabled={creating}>
-                {creating ? "Creating…" : "Create User"}
-              </button>
-            </form>
-          </section>
 
           {/* Users table */}
           <section className="jida-card" ref={usersTableRef}>
@@ -4018,21 +4498,7 @@ export function AdminWorkspace() {
             )}
           </section>
         </section>
-      )}
-
-      {/* These already ship a full sidebar layout of their own — nesting
-          them here would stack a second sidebar inside Admin's, so it's
-          collapsed via CSS and only each workspace's content area shows. */}
-      {activeTab === "author"   && <div className="jida-nested-workspace"><AuthorWorkspace /></div>}
-      {activeTab === "reviewer" && <div className="jida-nested-workspace"><ReviewerWorkspace /></div>}
-      {activeTab === "editor"   && <div className="jida-nested-workspace"><EditorWorkspace /></div>}
-    </>
-    )}
-
-    {activeView === "team" && (
-      <section className="jida-workspace">
-        <TeamRoster title="All Users" people={roster} />
-      </section>
+      </>
     )}
 
     {activeView === "roles" && (

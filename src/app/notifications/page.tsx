@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { AppHeader } from "@/features/jida/components";
-import { formatRelativeTime } from "@/features/jida/dashboard-shell";
+import { AssignmentNotificationActions, formatRelativeTime } from "@/features/jida/dashboard-shell";
 import {
   clearAllNotifications,
   deleteNotification,
@@ -137,6 +137,11 @@ export default function NotificationsPage() {
                   </button>
                   <strong>{n.title}</strong>
                   <p>{n.body}</p>
+                  {n.kind === "REVIEW_ASSIGNMENT" && n.refId && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <AssignmentNotificationActions assignmentId={n.refId} onResolved={refresh} />
+                    </div>
+                  )}
                   <time title={new Date(n.visibleAt).toLocaleString()}>
                     {formatRelativeTime(n.visibleAt)}
                   </time>

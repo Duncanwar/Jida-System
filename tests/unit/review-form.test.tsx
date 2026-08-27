@@ -29,6 +29,9 @@ const assignment: Assignment = {
   deadline: "2026-09-01T00:00:00.000Z",
   submittedAt: "2026-08-01T00:00:00.000Z",
   progress: "IN_PROGRESS",
+  // The reviewer has accepted this assignment — the Review action only shows
+  // once an assignment is accepted.
+  response: "ACCEPTED",
 };
 
 beforeEach(() => {
