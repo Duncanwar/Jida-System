@@ -143,8 +143,14 @@ export default function Home() {
         <div className="jida-home-section-heading">
           <div>
             <p className="jida-section-kicker">Articles &amp; Publication</p>
-            <h2 id="home-news-title">Latest articles and publication news</h2>
+            {/* The heading is the section's own way into the full archive. */}
+            <h2 id="home-news-title">
+              <Link href="/archive" className="jida-home-news-title-link">
+                Latest articles and publication news
+              </Link>
+            </h2>
           </div>
+          <Link href="/archive">Browse the archive →</Link>
         </div>
         {loading && <p className="jida-home-state">Loading publication updates...</p>}
         {error && <p className="jida-home-state jida-home-state-error">{error}</p>}

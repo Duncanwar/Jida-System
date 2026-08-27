@@ -27,6 +27,7 @@ import {
   getNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  respondToAssignment,
   type NotificationItem,
   type Role,
 } from "@/lib/api";
@@ -198,6 +199,96 @@ export function DashboardSidebar({
   );
 }
 
+// ─── Assignment accept / decline (shared by the bell and /notifications) ──
+
+/**
+ * Inline Accept / Decline for a "you have been assigned a manuscript"
+ * notification. Decline swaps in a required reason box. Either outcome
+ * notifies the editor server-side.
+ */
+export function AssignmentNotificationActions({
+  assignmentId,
+  onResolved,
+  compact,
+}: {
+  assignmentId: string;
+  onResolved: () => void;
+  compact?: boolean;
+}) {
+  const [mode, setMode] = useState<"idle" | "declining" | "busy" | "done" | "error">("idle");
+  const [reason, setReason] = useState("");
+  const [outcome, setOutcome] = useState<"accepted" | "declined" | null>(null);
+
+  async function respond(accept: boolean) {
+    if (!accept && !reason.trim()) {
+      setMode("declining");
+      return;
+    }
+    setMode("busy");
+    try {
+      await respondToAssignment(assignmentId, accept, accept ? undefined : reason.trim());
+      setOutcome(accept ? "accepted" : "declined");
+      setMode("done");
+      onResolved();
+    } catch {
+      setMode("error");
+    }
+  }
+
+  if (mode === "done") {
+    return <p className="jida-inline-note">Assignment {outcome}. The editor has been notified.</p>;
+  }
+
+  return (
+    <div className={`jida-assignment-actions${compact ? " compact" : ""}`}>
+      {mode === "declining" ? (
+        <>
+          <textarea
+            className="jida-assignment-reason"
+            placeholder="Why are you declining this assignment?"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+          />
+          <div className="jida-assignment-actions-row">
+            <button type="button" className="jida-btn-secondary jida-btn-sm" onClick={() => setMode("idle")}>
+              Back
+            </button>
+            <button
+              type="button"
+              className="jida-btn-danger jida-btn-sm"
+              disabled={!reason.trim()}
+              onClick={() => respond(false)}
+            >
+              Send decline
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="jida-assignment-actions-row">
+          <button
+            type="button"
+            className="jida-btn-primary jida-btn-sm"
+            disabled={mode === "busy"}
+            onClick={() => respond(true)}
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            className="jida-btn-secondary jida-btn-sm"
+            disabled={mode === "busy"}
+            onClick={() => setMode("declining")}
+          >
+            Decline
+          </button>
+        </div>
+      )}
+      {mode === "error" && <p className="jida-home-state-error">Could not send your response.</p>}
+    </div>
+  );
+}
+
 // ─── NotificationBell ────────────────────────────────────────────────────
 
 export function NotificationBell() {
@@ -300,6 +391,15 @@ export function NotificationBell() {
                   </button>
                   <strong>{n.title}</strong>
                   <p>{n.body}</p>
+                  {n.kind === "REVIEW_ASSIGNMENT" && n.refId && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <AssignmentNotificationActions
+                        assignmentId={n.refId}
+                        onResolved={refresh}
+                        compact
+                      />
+                    </div>
+                  )}
                   <time>{formatRelativeTime(n.visibleAt)}</time>
                 </li>
               ))}
@@ -322,6 +422,13 @@ export function ReminderButton({ manuscriptId }: { manuscriptId: string }) {
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
+  function close() {
+    setOpen(false);
+    setStatus("idle");
+    setRemindAt("");
+    setNote("");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!remindAt || !note.trim()) return;
@@ -329,59 +436,59 @@ export function ReminderButton({ manuscriptId }: { manuscriptId: string }) {
     try {
       await createReminder(manuscriptId, new Date(remindAt).toISOString(), note.trim());
       setStatus("saved");
-      setTimeout(() => {
-        setOpen(false);
-        setStatus("idle");
-        setRemindAt("");
-        setNote("");
-      }, 900);
+      setTimeout(close, 900);
     } catch {
       setStatus("error");
     }
   }
 
   return (
-    <span className="jida-reminder-btn-wrap">
+    <>
       <button
         type="button"
-        className="jida-btn-secondary"
-        onClick={() => setOpen((v) => !v)}
+        className="jida-btn-secondary jida-btn-sm"
+        onClick={() => setOpen(true)}
       >
-        <Clock size={13} style={{ marginRight: "0.35rem", verticalAlign: "-2px" }} />
+        <Clock size={13} style={{ marginRight: "0.3rem", verticalAlign: "-2px" }} />
         Remind me
       </button>
+      {/* Reuses the shared portaled dialog — always centred in the viewport,
+          so it can never spill off-screen wherever the card sits. */}
       {open && (
-        <form className="jida-reminder-popover" onSubmit={handleSubmit}>
-          <label>
-            Remind me at
-            <input
-              type="datetime-local"
-              value={remindAt}
-              onChange={(e) => setRemindAt(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Note
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="What should this reminder say?"
-              required
-            />
-          </label>
-          <div className="jida-reminder-popover-actions">
-            <button type="submit" className="jida-btn-primary" disabled={status === "saving"}>
-              {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Set reminder"}
-            </button>
-            <button type="button" className="jida-btn-secondary" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-          </div>
-          {status === "error" && <p className="jida-home-state-error">Could not set reminder.</p>}
-        </form>
+        <ActionModal title="Set a reminder" onClose={close}>
+          <form className="jida-reminder-form" onSubmit={handleSubmit}>
+            <label>
+              Remind me at
+              <input
+                type="datetime-local"
+                value={remindAt}
+                onChange={(e) => setRemindAt(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Note
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="What should this reminder say?"
+                rows={3}
+                required
+              />
+            </label>
+            {status === "error" && <p className="jida-home-state-error">Could not set reminder.</p>}
+            <div className="jida-modal-actions">
+              <button type="button" className="jida-btn-secondary" onClick={close}>
+                Cancel
+              </button>
+              <button type="submit" className="jida-btn-primary" disabled={status === "saving"}>
+                {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Set reminder"}
+              </button>
+            </div>
+          </form>
+        </ActionModal>
       )}
-    </span>
+    </>
   );
 }
 

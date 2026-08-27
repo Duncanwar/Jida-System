@@ -347,6 +347,21 @@ export async function getReviewHistory() {
   return request<Assignment[]>("GET", "/api/reviewer/history");
 }
 
+/**
+ * Reviewer accepts or declines an assigned manuscript from the in-app
+ * notification. A decline needs a reason; both outcomes notify the editor.
+ */
+export async function respondToAssignment(
+  assignmentId: string,
+  accept: boolean,
+  reason?: string,
+) {
+  return request<Assignment>("POST", `/api/reviewer/assignments/${assignmentId}/respond`, {
+    accept,
+    ...(reason ? { reason } : {}),
+  });
+}
+
 // ─── Editor ────────────────────────────────────────────────────────────────
 
 export async function getEditorSubmissions(status?: string) {
@@ -363,6 +378,62 @@ export async function assignReviewers(
   assignments: { reviewerId: string; deadline: string }[],
 ) {
   return request("POST", `/api/editor/manuscripts/${manuscriptId}/assign-reviewers`, { assignments });
+}
+
+// ─── Reviewer invitations (editor grows the reviewer pool) ─────────────────
+
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED";
+
+export interface ReviewerInvitation {
+  id: string;
+  email: string;
+  status: InvitationStatus;
+  declineReason?: string | null;
+  respondedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/** Editor emails anyone to become a reviewer. Backend sends the magic-link mail. */
+export async function sendReviewerInvitation(email: string, message: string) {
+  return request<ReviewerInvitation>("POST", "/api/editor/reviewer-invitations", { email, message });
+}
+
+export async function getReviewerInvitations() {
+  return request<ReviewerInvitation[]>("GET", "/api/editor/reviewer-invitations");
+}
+
+// ─── Invitation / assignment magic-link landing (public) ──────────────────
+
+export interface InvitationInfo {
+  type: "REVIEWER_INVITATION" | "ASSIGNMENT";
+  email: string;
+  title?: string;
+  status: string;
+  needsAccount: boolean;
+}
+
+export async function getInvitation(token: string) {
+  return request<InvitationInfo>("GET", `/api/invitations/${encodeURIComponent(token)}`);
+}
+
+export async function acceptInvitation(
+  token: string,
+  body: { password?: string; name?: string } = {},
+) {
+  return request<{ ok: true; type: string; accountCreated?: boolean }>(
+    "POST",
+    `/api/invitations/${encodeURIComponent(token)}/accept`,
+    body,
+  );
+}
+
+export async function declineInvitation(token: string, reason: string) {
+  return request<{ ok: true; type: string }>(
+    "POST",
+    `/api/invitations/${encodeURIComponent(token)}/decline`,
+    { reason },
+  );
 }
 
 export type DecisionStage = "INITIAL_SCREENING" | "FINAL_SCREENING";
@@ -501,6 +572,10 @@ export type NotificationItem = {
   manuscript: { id: string; title: string } | null;
   title: string;
   body: string;
+  /** GENERIC | REVIEW_ASSIGNMENT | ASSIGNMENT_RESPONSE — drives inline actions. */
+  kind?: string;
+  /** Row the notification's actions target (a ReviewAssignment id) when not GENERIC. */
+  refId?: string | null;
   visibleAt: string;
   readAt: string | null;
   createdAt: string;
@@ -681,6 +756,8 @@ export interface ManuscriptSummary {
   decisions?: EditorialDecisionInfo[];
   reviews?: AuthorVisibleReview[];
   coAuthors?: CoAuthor[];
+  /** Author flagged this as a revised manuscript at submission (or via a revision). */
+  isRevised?: boolean;
 }
 
 export interface ReviewerOption {
@@ -699,10 +776,18 @@ export interface ManuscriptDetail extends ManuscriptSummary {
   assignments?: Assignment[];
 }
 
+export type AssignmentResponseState = "PENDING" | "ACCEPTED" | "DECLINED";
+
 export interface Assignment {
   id: string;
   manuscriptId: string;
   manuscriptTitle?: string;
+  /** Whether the manuscript is a revised version — shown as a badge. */
+  manuscriptIsRevised?: boolean;
+  /** Whether the reviewer has accepted this assignment. */
+  response?: AssignmentResponseState;
+  declineReason?: string | null;
+  respondedAt?: string | null;
   /** The submission deadline in effect when the manuscript came in — used to group the queue by submission period. */
   submissionDeadline?: string | null;
   abstract?: string;
@@ -731,6 +816,8 @@ export interface EditorSubmission {
   title: string;
   status: ManuscriptStatus;
   submissionDeadline?: string | null;
+  /** Author flagged this as a revised manuscript. */
+  isRevised?: boolean;
   authorName?: string;
   /** Full contact details, for the author hover card. */
   author?: { id: string; name?: string | null; email: string; affiliation?: string | null };
