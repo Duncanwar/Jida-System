@@ -894,6 +894,9 @@ export interface PublicArticle {
   slug: string;
   publishedAt: string;
   scholarReady?: boolean;
+  /** The manuscript this article was published from — lets the editor screen
+   *  already-published work out of the "awaiting publication" queue. */
+  manuscriptId?: string;
   issue?: { volume: number; issueNumber: number; year: number; title?: string | null } | null;
   manuscript: {
     title: string;

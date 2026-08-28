@@ -2027,6 +2027,13 @@ export function ReviewerWorkspace() {
 
 // ─── EditorWorkspace ───────────────────────────────────────────────────────
 
+/** Sort options over the Google Scholar indexing table. */
+const INDEX_FILTERS = [
+  ["all", "All"],
+  ["indexed", "Indexed"],
+  ["not-indexed", "Not indexed"],
+] as const;
+
 export function EditorWorkspace() {
   const [submissions, setSubmissions] = useState<EditorSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2041,6 +2048,15 @@ export function EditorWorkspace() {
   const [unassigning, setUnassigning] = useState<string | null>(null);
   /** What stands between the article just published and Google Scholar. */
   const [scholarReport, setScholarReport] = useState<ScholarReadiness | null>(null);
+
+  // Google Scholar indexing for work that is already published. The flag is
+  // set at publish time, but an article published before that check existed —
+  // or published with the box unticked — has no way back on without this.
+  const [published, setPublished] = useState<PublicArticle[]>([]);
+  const [indexing, setIndexing] = useState<string | null>(null);
+  const [indexMsg, setIndexMsg] = useState<string | null>(null);
+  const [indexReports, setIndexReports] = useState<Record<string, ScholarReadiness>>({});
+  const [indexFilter, setIndexFilter] = useState<"all" | "indexed" | "not-indexed">("all");
 
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
   const [query, setQuery] = useState("");
@@ -2141,6 +2157,105 @@ export function EditorWorkspace() {
   useEffect(() => {
     if (activeView === "announcements") fetchAnnouncementHistory();
   }, [activeView]);
+
+  /** Published articles, for the Google Scholar indexing panel. */
+  async function fetchPublished() {
+    try {
+      setPublished(await getPublicArticles());
+    } catch {
+      // The panel is a secondary surface; a failure here must not blank the
+      // Publication view, which is where the editor actually publishes.
+      setPublished([]);
+    }
+  }
+
+  useEffect(() => {
+    if (activeView === "publication" || activeView === "indexing") fetchPublished();
+  }, [activeView]);
+
+  /**
+   * Turns Google Scholar indexing on or off for an article that is already
+   * published. The server re-runs the readiness check and refuses when the
+   * article cannot be indexed, so the rejection body is kept and shown against
+   * that row rather than reduced to a generic failure message.
+   */
+  async function handleToggleIndexing(article: PublicArticle, next: boolean) {
+    setIndexing(article.id);
+    setIndexMsg(null);
+    setIndexReports((r) => {
+      const rest = { ...r };
+      delete rest[article.id];
+      return rest;
+    });
+    try {
+      const result = await setScholarReady(article.id, next);
+      setPublished((list) =>
+        list.map((a) => (a.id === article.id ? { ...a, scholarReady: next } : a)),
+      );
+      setIndexMsg(
+        next
+          ? `"${article.manuscript.title}" is now marked for Google Scholar indexing.`
+          : `"${article.manuscript.title}" is no longer marked for indexing.`,
+      );
+      if (next && result.warnings?.length) {
+        setIndexReports((r) => ({ ...r, [article.id]: result }));
+      }
+    } catch (err) {
+      const readiness =
+        err instanceof ApiError
+          ? (err.details as unknown as ScholarReadiness | undefined)
+          : undefined;
+      setIndexMsg(`"${article.manuscript.title}" cannot be indexed yet.`);
+      setIndexReports((r) => ({
+        ...r,
+        [article.id]: readiness?.blockers
+          ? readiness
+          : {
+              ready: false,
+              blockers: [
+                {
+                  id: "unknown",
+                  severity: "blocker",
+                  message: err instanceof Error ? err.message : "Scholar check failed",
+                },
+              ],
+              warnings: [],
+            },
+      }));
+    } finally {
+      setIndexing(null);
+    }
+  }
+
+  /** Turns indexing on for every article that is not already indexed. Each one
+   *  is still checked by the server, so ineligible articles report why. */
+  async function handleIndexAll() {
+    const pending = published.filter((a) => !a.scholarReady);
+    if (!pending.length) return;
+    setIndexing("__all__");
+    setIndexMsg(null);
+    setIndexReports({});
+    let done = 0;
+    const failures: Record<string, ScholarReadiness> = {};
+    for (const article of pending) {
+      try {
+        await setScholarReady(article.id, true);
+        done += 1;
+      } catch (err) {
+        const readiness =
+          err instanceof ApiError
+            ? (err.details as unknown as ScholarReadiness | undefined)
+            : undefined;
+        if (readiness?.blockers) failures[article.id] = readiness;
+      }
+    }
+    setIndexReports(failures);
+    setIndexMsg(
+      `${done} of ${pending.length} article${pending.length === 1 ? "" : "s"} marked for Google Scholar indexing.`,
+    );
+    setIndexing(null);
+    fetchPublished();
+  }
 
   async function handleAssign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -2350,6 +2465,22 @@ export function EditorWorkspace() {
     (s) => s.status === "UNDER_REVIEW" && (s.assignments ?? []).length < 2,
   );
   const acceptedQueue = submissions.filter((s) => s.status === "ACCEPTED");
+
+  // Publishing does not change a manuscript's status, so an ACCEPTED
+  // manuscript stays ACCEPTED forever after it goes out. Screening the
+  // published ones out is what keeps "awaiting publication" honest and stops
+  // the publish dropdown offering work that is already in an issue.
+  const publishedManuscriptIds = new Set(
+    published.map((a) => a.manuscriptId).filter((id): id is string => Boolean(id)),
+  );
+  const awaitingProduction = acceptedQueue.filter((s) => !publishedManuscriptIds.has(s.id));
+  const indexedCount = published.filter((a) => a.scholarReady).length;
+  const notIndexedCount = published.length - indexedCount;
+  const visiblePublished = published.filter((a) =>
+    indexFilter === "indexed" ? a.scholarReady
+      : indexFilter === "not-indexed" ? !a.scholarReady
+      : true,
+  );
   const allAssignments = submissions.flatMap((s) =>
     (s.assignments ?? []).map((a) => ({ submission: s, assignment: a })),
   );
@@ -2933,7 +3064,46 @@ export function EditorWorkspace() {
             </div>
             <span className="jida-panel-arrow">→</span>
           </button>
+          {/* Returning an edited file is part of deciding on a manuscript, not
+              of publishing one, so it sits with the other decision actions. */}
+          <button type="button" className="jida-panel-card" onClick={() => { setUploadMsg(null); openPanel("upload", ""); }}>
+            <span className="jida-panel-num">03</span>
+            <div className="jida-panel-info">
+              <strong>Upload Edited Manuscript <span className="jida-optional">(optional)</span></strong>
+              <p>Send a revised file back to the author with remarks explaining what changed.</p>
+            </div>
+            <span className="jida-panel-arrow">→</span>
+          </button>
         </div>
+
+        {activePanel === "upload" && (
+          <ActionModal
+            title="Upload Edited Manuscript"
+            onClose={() => { setActivePanel(null); setUploadMsg(null); }}
+          >
+            <form className="jida-form" onSubmit={handleUploadEditedFile} encType="multipart/form-data">
+              <div className="jida-form-header">
+                <span>03</span>
+                <div><h3>Upload Edited Manuscript <span className="jida-optional">(optional)</span></h3><p>Send back a revised file with remarks for the author.</p></div>
+              </div>
+              {uploadMsg && (
+                <ActionResultMessage message={uploadMsg} isSuccess={uploadMsg.startsWith("Edited manuscript uploaded")} />
+              )}
+              <label>
+                Manuscript
+                <select name="manuscriptId" defaultValue={presetManuscriptId} required>
+                  <option value="" disabled>Select a manuscript</option>
+                  {submissions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.title} — {statusLabel(s.status)}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Edited file (PDF / DOCX) <span className="jida-optional">(optional)</span><input type="file" name="file" accept=".pdf,.docx" /></label>
+              <label>Remarks for the author<textarea name="remarks" rows={3} placeholder="Explain what was changed" required /></label>
+              <button type="submit" className="jida-btn-primary jida-btn-sm jida-btn-fit">Upload Edited Manuscript</button>
+            </form>
+          </ActionModal>
+        )}
 
         {activePanel === "decision-initial" && (
           <ActionModal
@@ -3071,8 +3241,23 @@ export function EditorWorkspace() {
             aria-expanded={showPublishForm}
             onClick={() => setShowPublishForm((v) => !v)}
           >
-            <Plus size={16} /> Publish a manuscript
+            <Plus size={16} /> Publish
           </button>
+        </div>
+
+        <div className="jida-stat-cards">
+          <StatCard label="Awaiting Production" value={awaitingProduction.length} />
+          <StatCard label="Published" value={published.length} />
+          <StatCard
+            label="Scholar Indexed"
+            value={indexedCount}
+            onClick={() => { setIndexFilter("indexed"); setActiveView("indexing"); }}
+          />
+          <StatCard
+            label="Not Indexed"
+            value={notIndexedCount}
+            onClick={() => { setIndexFilter("not-indexed"); setActiveView("indexing"); }}
+          />
         </div>
 
         {showPublishForm && (
@@ -3124,7 +3309,7 @@ export function EditorWorkspace() {
               Manuscript
               <select name="manuscriptId" defaultValue={presetManuscriptId} required>
                 <option value="" disabled>Select an accepted manuscript</option>
-                {acceptedQueue.map((s) => (
+                {awaitingProduction.map((s) => (
                   <option key={s.id} value={s.id}>{s.title}</option>
                 ))}
               </select>
@@ -3134,60 +3319,185 @@ export function EditorWorkspace() {
             <label>Year<input type="number" name="year" defaultValue={new Date().getFullYear()} min={2000} required /></label>
             <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
               <input type="checkbox" name="scholar" defaultChecked style={{ width: "auto" }} />
-              Publish to Google Scholar (adds citation metadata for indexing)
+              Prepare this article for Google Scholar (adds citation metadata)
             </label>
             <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
               <input type="checkbox" name="specialIssue" style={{ width: "auto" }} />
               Special Issue
             </label>
-            <button type="submit" className="jida-btn-primary">Publish to Journal Issue</button>
+            <button type="submit" className="jida-btn-primary jida-btn-sm jida-btn-fit">Publish to Journal Issue</button>
           </form>
         </div>
         )}
 
         <section className="jida-card">
+            <div className="jida-section-heading">
+              <div><p className="jida-section-kicker">Production</p><h2>Awaiting Publication</h2></div>
+              <span className="jida-badge">{awaitingProduction.length} ready</span>
+            </div>
+            <div className="jida-table-wrap">
+              <table className="jida-table">
+                <thead>
+                  <tr><th>Manuscript</th><th>Status</th><th /></tr>
+                </thead>
+                <tbody>
+                  {awaitingProduction.map((s) => (
+                    <tr key={s.id}>
+                      <td className="jida-queue-title">{s.title}</td>
+                      <td><span className="jida-badge success">Accepted</span></td>
+                      <td>
+                        <button
+                          type="button"
+                          className="jida-btn-secondary jida-btn-sm"
+                          onClick={() => { setPresetManuscriptId(s.id); setIssueMsg(null); setShowPublishForm(true); }}
+                        >
+                          Publish
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {awaitingProduction.length === 0 && (
+                    <tr><td colSpan={3} className="jida-queue-empty">No accepted manuscripts awaiting publication.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+        </section>
+
+        </>
+      )}
+
+      {activeView === "indexing" && (
+        <>
+        <div className="jida-stat-cards">
+          <StatCard label="Published" value={published.length} />
+          <StatCard
+            label="Scholar Indexed"
+            value={indexedCount}
+            active={indexFilter === "indexed"}
+            onClick={() => setIndexFilter(indexFilter === "indexed" ? "all" : "indexed")}
+          />
+          <StatCard
+            label="Not Indexed"
+            value={notIndexedCount}
+            active={indexFilter === "not-indexed"}
+            onClick={() => setIndexFilter(indexFilter === "not-indexed" ? "all" : "not-indexed")}
+          />
+        </div>
+
+        {/* FR-E12 — Google Scholar only sees an article once this flag is on:
+            it is what makes the public page emit its citation_* tags. Articles
+            published before the check existed have it off, so it has to be
+            settable after publication, not only at publish time. */}
+        <section className="jida-card">
           <div className="jida-section-heading">
-            <div><p className="jida-section-kicker">Production</p><h2>Awaiting Publication</h2></div>
-            <span className="jida-badge">{acceptedQueue.length} accepted</span>
+            <div><p className="jida-section-kicker">Indexing</p><h2>Google Scholar</h2></div>
+            <span className="jida-badge">{indexedCount} of {published.length} indexed</span>
           </div>
-          <div className="jida-track-list">
-            {acceptedQueue.slice(0, 5).map(renderSubmission)}
-            {acceptedQueue.length === 0 && (
-              <p style={{ textAlign: "center", padding: "1rem" }}>No accepted manuscripts awaiting publication.</p>
-            )}
+
+          {indexMsg && (
+            <ActionResultMessage
+              message={indexMsg}
+              isSuccess={!indexMsg.includes("cannot be indexed")}
+            />
+          )}
+
+          <div className="jida-index-filters" role="group" aria-label="Filter articles by indexing status">
+            {INDEX_FILTERS.map(([key, word]) => (
+              <button
+                key={key}
+                type="button"
+                className={`jida-index-filter${indexFilter === key ? " active" : ""}`}
+                aria-pressed={indexFilter === key}
+                onClick={() => setIndexFilter(key)}
+              >
+                {word} ({key === "all" ? published.length : key === "indexed" ? indexedCount : notIndexedCount})
+              </button>
+            ))}
+          </div>
+
+          {notIndexedCount > 0 && (
+            <button
+              type="button"
+              className="jida-btn-primary jida-btn-sm jida-btn-fit"
+              disabled={indexing !== null}
+              onClick={handleIndexAll}
+            >
+              {indexing === "__all__" ? "Marking…" : `Index all ${notIndexedCount}`}
+            </button>
+          )}
+
+          <div className="jida-table-wrap">
+            <table className="jida-table">
+              <thead>
+                <tr><th>Manuscript</th><th>Status</th><th /></tr>
+              </thead>
+              <tbody>
+                {visiblePublished.map((article) => {
+                  const report = indexReports[article.id];
+                  return (
+                    <Fragment key={article.id}>
+                      <tr>
+                        <td className="jida-queue-title">{article.manuscript.title}</td>
+                        <td>
+                          <span className={`jida-badge${article.scholarReady ? " success" : ""}`}>
+                            {article.scholarReady ? "Indexed" : "Not indexed"}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={`${article.scholarReady ? "jida-btn-secondary" : "jida-btn-primary"} jida-btn-sm`}
+                            disabled={indexing !== null}
+                            onClick={() => handleToggleIndexing(article, !article.scholarReady)}
+                          >
+                            {indexing === article.id ? "…" : article.scholarReady ? "Remove" : "Index"}
+                          </button>
+                        </td>
+                      </tr>
+                      {report && (
+                        <tr>
+                          <td colSpan={3}>
+                            <div className={`jida-scholar-report${report.ready ? " ready" : ""}`} role="status">
+                              {report.blockers.length > 0 && (
+                                <>
+                                  <h5>Must be fixed before indexing</h5>
+                                  <ul>
+                                    {report.blockers.map((c) => (
+                                      <li key={c.id} className="blocker">{c.message}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+                              {report.warnings.length > 0 && (
+                                <>
+                                  <h5>Recommended</h5>
+                                  <ul>
+                                    {report.warnings.map((c) => (
+                                      <li key={c.id} className="warning">{c.message}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+                {visiblePublished.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="jida-queue-empty">
+                      {published.length === 0 ? "No published articles yet." : "No articles match this filter."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
-        {activePanel !== "upload" ? (
-          <button type="button" className="jida-btn-secondary" onClick={() => setActivePanel("upload")}>
-            + Upload an edited manuscript <span className="jida-optional">(optional)</span>
-          </button>
-        ) : (
-          <div className="jida-form-panel" ref={formPanelRef}>
-            <button type="button" className="jida-back-btn" onClick={() => { setActivePanel(null); setUploadMsg(null); }}>← Hide</button>
-            <form className="jida-form" onSubmit={handleUploadEditedFile} encType="multipart/form-data">
-              <div className="jida-form-header">
-                <span>02</span>
-                <div><h3>Upload Edited Manuscript <span className="jida-optional">(optional)</span></h3><p>Send back a revised file with remarks for the author.</p></div>
-              </div>
-              {uploadMsg && (
-                <ActionResultMessage message={uploadMsg} isSuccess={uploadMsg.startsWith("Edited manuscript uploaded")} />
-              )}
-              <label>
-                Manuscript
-                <select name="manuscriptId" defaultValue={presetManuscriptId} required>
-                  <option value="" disabled>Select a manuscript</option>
-                  {submissions.map((s) => (
-                    <option key={s.id} value={s.id}>{s.title} — {statusLabel(s.status)}</option>
-                  ))}
-                </select>
-              </label>
-              <label>Edited file (PDF / DOCX) <span className="jida-optional">(optional)</span><input type="file" name="file" accept=".pdf,.docx" /></label>
-              <label>Remarks for the author<textarea name="remarks" rows={3} placeholder="Explain what was changed" required /></label>
-              <button type="submit" className="jida-btn-primary">Upload Edited Manuscript</button>
-            </form>
-          </div>
-        )}
         </>
       )}
 
