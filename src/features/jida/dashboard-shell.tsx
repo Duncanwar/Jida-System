@@ -46,6 +46,8 @@ export type DashboardView =
   | "peer-review"
   | "decisions"
   | "publication"
+  // Reached from the Publication stat cards, not the sidebar.
+  | "indexing"
   // Admin-only.
   | "roles"
   | "settings";

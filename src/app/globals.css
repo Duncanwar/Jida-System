@@ -902,34 +902,34 @@ button:hover{
   min-height: calc(100vh - 58px);
 }
 
+/* Dashboard page heading. Deliberately unboxed: no fill, no border, no
+   shadow, so the title reads as page furniture and the cards below it carry
+   the visual weight. It was previously a solid navy panel, which competed
+   with the content it introduces. */
 .jida-page-title {
-  border-radius: 12px;
-  background: #10223d;
-  color: #fff;
-  padding: 1.5rem;
+  padding: 0.35rem 0 1.35rem;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-end;
-  box-shadow: 0 4px 12px rgba(16, 34, 61, 0.16);
 }
 
 .jida-page-title .jida-section-kicker {
-  color: #b7cdf0;
+  color: #6a81a5;
 }
 
 .jida-page-title h2 {
-  max-width: 14ch;
+  max-width: 20ch;
   margin-top: 0.4rem;
-  color: #fff;
-  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
-  line-height: 1;
+  color: #10223d;
+  font-size: clamp(1.75rem, 3.2vw, 2.45rem);
+  line-height: 1.08;
 }
 
 .jida-page-title p:not(.jida-section-kicker) {
-  margin-top: 0.8rem;
+  margin-top: 0.55rem;
   max-width: 68ch;
-  color: #dbe7f8;
+  color: #5a7194;
   line-height: 1.55;
 }
 
@@ -950,6 +950,10 @@ button:hover{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.jida-grid-two.jida-grid-top {
+  align-items: start;
 }
 
 .jida-role-tabs {
@@ -1159,7 +1163,8 @@ button:hover{
 .jida-btn-primary,
 .jida-btn-secondary {
   width: auto;
-  min-width: 170px;
+  min-width: 0;
+  white-space: nowrap;
   border-radius: 10px;
   padding: 0.5rem 0.9rem;
   font-size: 0.78rem;
@@ -1574,12 +1579,8 @@ button:hover{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .jida-page-title {
-    min-height: 240px;
-  }
-
   .jida-page-title h2 {
-    max-width: 16ch;
+    max-width: 22ch;
   }
 }
 
@@ -1634,9 +1635,7 @@ button:hover{
   }
 
   .jida-page-title {
-    min-height: auto;
-    border-radius: 0 0 18px 18px;
-    padding: 1.1rem 1rem;
+    padding: 0.25rem 0 1rem;
   }
 
   .jida-page-title h2 {
@@ -1825,14 +1824,9 @@ button:hover{
     grid-template-columns: none;
   }
 
-  .jida-page-title,
   .jida-card,
   .jida-form {
     border-radius: 12px;
-  }
-
-  .jida-page-title {
-    border-radius: 0 0 16px 16px;
   }
 
   .jida-form-header {
@@ -6192,10 +6186,12 @@ button.jida-password-toggle:hover {
 /* Compact + icon button variants (base .jida-btn-* force min-width:170px). */
 .jida-btn-sm {
   min-width: 0;
-  padding: 0.32rem 0.7rem;
-  font-size: 0.72rem;
-  border-radius: 8px;
+  padding: 0.24rem 0.55rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  border-radius: 7px;
   box-shadow: none;
+  white-space: nowrap;
 }
 
 .jida-btn-icon {
@@ -6712,3 +6708,135 @@ button.jida-password-toggle:hover {
   color: #8a99b0;
   text-align: center;
 }
+
+/* ─── Editor › Publication › Google Scholar indexing panel ───────────────── */
+
+
+/* ─── Archive › crawlable issue index ────────────────────────────────────── */
+
+/* A plain, server-rendered table of contents. It exists mainly so search
+   engines (and Google Scholar, whose crawler ignores JavaScript) can reach
+   every article, but it is a genuinely useful full listing for readers too, so
+   it is styled as a quiet closing section rather than hidden. Hiding it with
+   display:none would make it cloaking, which search engines penalise. */
+.jida-archive-index {
+  max-width: 1100px;
+  margin: 0 auto 3rem;
+  padding: 1.9rem 2rem 2.1rem;
+  border-top: 1px solid #dce5f0;
+}
+
+.jida-archive-index > h2 {
+  font-size: 1.15rem;
+  color: #10223d;
+  margin-bottom: 0.3rem;
+}
+
+.jida-archive-index > p {
+  color: #5a7194;
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+}
+
+.jida-archive-index section {
+  margin-bottom: 1.4rem;
+}
+
+.jida-archive-index h3 {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #6a81a5;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #e7edf5;
+  margin-bottom: 0.6rem;
+}
+
+.jida-archive-index ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: 0.3rem 1.6rem;
+}
+
+.jida-archive-index li a {
+  display: block;
+  padding: 0.35rem 0;
+  font-size: 0.87rem;
+  line-height: 1.45;
+  color: #24507f;
+  text-decoration: none;
+}
+
+.jida-archive-index li a:hover,
+.jida-archive-index li a:focus-visible {
+  color: #10223d;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ─── Editor › Publication ───────────────────────────────────────────────── */
+
+/* .jida-workspace is a grid, so a bare button child stretches across the whole
+   column. These buttons are labels for a single action, not full-width calls
+   to action, so they size to their own text instead. */
+.jida-btn-fit {
+  justify-self: start;
+  width: fit-content;
+  min-width: 0;
+}
+
+/* Manuscript title cell in the production and indexing tables. */
+.jida-queue-title {
+  font-weight: 600;
+  color: #10223d;
+  line-height: 1.45;
+}
+
+.jida-queue-empty {
+  padding: 1rem 0;
+  text-align: center;
+  color: #6a81a5;
+  font-size: 0.87rem;
+}
+
+
+/* Sort/filter chips over the indexing list. */
+.jida-index-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.8rem 0 0.6rem;
+}
+
+.jida-index-filter {
+  width: auto;
+  height: auto;
+  border: 1px solid #d7e0ee;
+  background: #f7f9fd;
+  color: #4a5f80;
+  border-radius: 7px;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.jida-index-filter:hover {
+  border-color: #b9cbe6;
+  color: #10223d;
+}
+
+.jida-index-filter.active {
+  background: #10223d;
+  border-color: #10223d;
+  color: #fff;
+}
+
+
