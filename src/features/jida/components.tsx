@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown, Download, Mail, UserPlus } from "lucide-react";
+import { issueSlug } from "@/lib/public-content";
+import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown, ChevronRight, Download, Mail, UserPlus } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -45,6 +46,7 @@ import {
   adminUpdateSettings,
   saveReviewerFeedback,
   formatIssueTitle,
+  notifyIssueSubscribers,
   issueArticleCount,
   ASSESSMENT_ITEMS,
   REVIEW_RATINGS,
@@ -551,7 +553,7 @@ function CoAuthorLine({ coAuthors }: { coAuthors: CoAuthor[] }) {
  * A published article's byline — the submitting author followed by any
  * co-authors, each name carrying its own hover card.
  */
-function PublicAuthorLine({
+export function PublicAuthorLine({
   author,
   coAuthors,
 }: {
@@ -2055,6 +2057,9 @@ export function EditorWorkspace() {
   const [published, setPublished] = useState<PublicArticle[]>([]);
   const [indexing, setIndexing] = useState<string | null>(null);
   const [indexMsg, setIndexMsg] = useState<string | null>(null);
+  /** Issue id currently being announced to newsletter subscribers. */
+  const [notifyingIssue, setNotifyingIssue] = useState<string | null>(null);
+  const [issueNotifyMsg, setIssueNotifyMsg] = useState<string | null>(null);
   const [indexReports, setIndexReports] = useState<Record<string, ScholarReadiness>>({});
   const [indexFilter, setIndexFilter] = useState<"all" | "indexed" | "not-indexed">("all");
 
@@ -2415,6 +2420,8 @@ export function EditorWorkspace() {
     const body = String(fd.get("body") ?? "").trim();
     const submissionDeadline = String(fd.get("submissionDeadline") ?? "").trim();
     const openForSubmissionsValue = fd.get("openForSubmissions");
+    const notifySubscribers = fd.get("notifySubscribers") === "on";
+    const isPublic = fd.get("isPublic") === "on";
     if (!title || !body) {
       setAnnouncementMsg("Title and message are required.");
       setAnnouncementSending(false);
@@ -2426,8 +2433,16 @@ export function EditorWorkspace() {
         body,
         ...(submissionDeadline ? { submissionDeadline: new Date(submissionDeadline).toISOString() } : {}),
         ...(openForSubmissionsValue !== null ? { openForSubmissions: openForSubmissionsValue === "on" } : {}),
+        ...(notifySubscribers ? { notifySubscribers: true } : {}),
+        ...(isPublic ? { isPublic: true } : {}),
       });
-      setAnnouncementMsg(`Announcement sent to ${res.recipientCount} ${res.recipientCount === 1 ? "person" : "people"}.`);
+      const inApp = `Announcement sent to ${res.recipientCount} ${res.recipientCount === 1 ? "person" : "people"}.`;
+      // Report delivery honestly: some addresses can fail while others succeed.
+      const published = res.announcement?.isPublic ? " Published on the public announcements page." : "";
+      const mailed = res.newsletter?.recipients
+        ? ` Emailed to ${res.newsletter.delivered} of ${res.newsletter.recipients} newsletter subscriber${res.newsletter.recipients === 1 ? "" : "s"}.`
+        : "";
+      setAnnouncementMsg(inApp + published + mailed);
       form.reset();
       fetchAnnouncementHistory();
     } catch (err) {
@@ -2474,6 +2489,47 @@ export function EditorWorkspace() {
     published.map((a) => a.manuscriptId).filter((id): id is string => Boolean(id)),
   );
   const awaitingProduction = acceptedQueue.filter((s) => !publishedManuscriptIds.has(s.id));
+
+  /**
+   * The issues that actually have published articles, newest first, with a
+   * count. Derived from the publications rather than fetched: an issue with no
+   * articles in it is not something a reader should be told about.
+   */
+  const publishedIssues = (() => {
+    const byId = new Map<
+      string,
+      { id: string; volume: number; issueNumber: number; year: number; title?: string | null; count: number }
+    >();
+    for (const a of published) {
+      if (!a.issue?.id) continue;
+      const found = byId.get(a.issue.id);
+      if (found) found.count += 1;
+      else byId.set(a.issue.id, { ...a.issue, count: 1 });
+    }
+    return [...byId.values()].sort(
+      (x, y) => y.year - x.year || y.volume - x.volume || y.issueNumber - x.issueNumber,
+    );
+  })();
+
+  async function handleNotifyIssue(issueId: string, label: string) {
+    if (notifyingIssue) return;
+    setNotifyingIssue(issueId);
+    setIssueNotifyMsg(null);
+    try {
+      const res = await notifyIssueSubscribers(issueId);
+      setIssueNotifyMsg(
+        res.recipients === 0
+          ? "There are no newsletter subscribers to email yet."
+          : `${label} announced to ${res.delivered} of ${res.recipients} subscriber${res.recipients === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      setIssueNotifyMsg(
+        err instanceof Error ? `Could not email subscribers: ${err.message}` : "Could not email subscribers.",
+      );
+    } finally {
+      setNotifyingIssue(null);
+    }
+  }
   const indexedCount = published.filter((a) => a.scholarReady).length;
   const notIndexedCount = published.length - indexedCount;
   const visiblePublished = published.filter((a) =>
@@ -3364,6 +3420,54 @@ export function EditorWorkspace() {
             </div>
         </section>
 
+        {/* Announcing an issue is a separate, deliberate action: articles are
+            published into an issue one at a time, so mailing on each publish
+            would send readers one email per article. */}
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div>
+              <p className="jida-section-kicker">Readers</p>
+              <h2>Announce an issue</h2>
+              <p>Email newsletter subscribers that an issue is published, with a link to the archive.</p>
+            </div>
+          </div>
+          {issueNotifyMsg && (
+            <ActionResultMessage
+              message={issueNotifyMsg}
+              isSuccess={!issueNotifyMsg.startsWith("Could not")}
+            />
+          )}
+          <div className="jida-table-wrap">
+            <table className="jida-table">
+              <thead>
+                <tr><th>Issue</th><th>Articles</th><th /></tr>
+              </thead>
+              <tbody>
+                {publishedIssues.map((iss) => (
+                  <tr key={iss.id}>
+                    <td className="jida-queue-title">{formatIssueTitle(iss)}</td>
+                    <td>{iss.count}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="jida-btn-secondary jida-btn-sm"
+                        disabled={notifyingIssue !== null}
+                        onClick={() => handleNotifyIssue(iss.id, formatIssueTitle(iss))}
+                      >
+                        {notifyingIssue === iss.id ? "Sending…" : "Email subscribers"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {publishedIssues.length === 0 && (
+                  <tr><td colSpan={3} className="jida-queue-empty">No issues have been published yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+
         </>
       )}
 
@@ -3536,6 +3640,16 @@ export function EditorWorkspace() {
                 <input type="checkbox" name="openForSubmissions" defaultChecked style={{ width: "auto" }} />
                 Submissions are open
               </label>
+              {/* Both off by default: most announcements are internal, and
+                  neither publishing nor emailing can be taken back. */}
+              <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                <input type="checkbox" name="isPublic" style={{ width: "auto" }} />
+                Show this on the public announcements page
+              </label>
+              <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+                <input type="checkbox" name="notifySubscribers" style={{ width: "auto" }} />
+                Also email this to newsletter subscribers
+              </label>
               <button type="submit" className="jida-btn-primary" disabled={announcementSending}>
                 {announcementSending ? "Sending…" : "Send Announcement"}
               </button>
@@ -3582,13 +3696,18 @@ export function EditorWorkspace() {
 
 const ARCHIVE_AZ_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-export function ArchiveWorkspace() {
-  const [issues, setIssues] = useState<PublicIssue[]>([]);
+/**
+ * @param initialIssues Issues fetched on the server by the archive page.
+ *   Without them the "Browse by issue" strip below would be empty during
+ *   server rendering, and those links are the crawl path to every article —
+ *   a search-engine crawler never runs the effect that loads them.
+ */
+export function ArchiveWorkspace({ initialIssues = [] }: { initialIssues?: PublicIssue[] } = {}) {
+  const [issues, setIssues] = useState<PublicIssue[]>(initialIssues);
   const [articles, setArticles] = useState<PublicArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openYear, setOpenYear] = useState<number | null>(null);
-  const [openIssueId, setOpenIssueId] = useState<string | null>(null);
 
   // Filter bar state, borrowed from Taylor & Francis's subject listing page.
   const [searchTerm, setSearchTerm] = useState("");
@@ -3787,7 +3906,6 @@ export function ArchiveWorkspace() {
                 className="jida-archive-accordion-trigger"
                 onClick={() => {
                   setOpenYear((current) => (current === year ? null : year));
-                  setOpenIssueId(null);
                 }}
                 aria-expanded={isYearOpen}
               >
@@ -3795,50 +3913,31 @@ export function ArchiveWorkspace() {
                 <span>{year}</span>
               </button>
 
-              {isYearOpen && (
-                <div className="jida-archive-accordion-panel">
+              {/* Rendered for every year, not only the open one, and hidden
+                  with CSS instead. The issue links inside are the crawl path to
+                  each article, and a crawler would never click the year open.
+                  Not cloaking: the same content is one click away for a reader,
+                  which is how any accordion works. */}
+              {(
+                <div className={`jida-archive-accordion-panel${isYearOpen ? "" : " collapsed"}`}>
                   {(issuesByYear.get(year) ?? []).map((issue) => {
-                    const isIssueOpen = openIssueId === issue.id;
                     const count = issueArticleCount(issue);
                     return (
                       <div key={issue.id} className="jida-archive-issue-row">
-                        <button
-                          type="button"
+                        {/* Opens the issue's own page rather than expanding in
+                            place. That page is rendered on the server, so it is
+                            also the path a search-engine crawler follows to
+                            reach each article. */}
+                        <Link
+                          href={`/archive/issue/${issueSlug(issue)}`}
                           className="jida-archive-issue-trigger"
-                          onClick={() => setOpenIssueId((current) => (current === issue.id ? null : issue.id))}
-                          aria-expanded={isIssueOpen}
                         >
-                          {isIssueOpen ? <Minus size={13} /> : <Plus size={13} />}
+                          <ChevronRight size={13} />
                           <span>{formatIssueTitle(issue)}</span>
                           <span className="jida-archive-issue-count">
                             {count} article{count === 1 ? "" : "s"}
                           </span>
-                        </button>
-
-                        {isIssueOpen && (
-                          issue.publications && issue.publications.length > 0 ? (
-                            <ol className="jida-issue-contents">
-                              {issue.publications.map((pub) => (
-                                <li key={pub.id}>
-                                  <Link href={`/archive/${pub.slug}`} className="jida-issue-article-title">
-                                    {pub.manuscript.title}
-                                  </Link>
-                                  <span className="jida-issue-article-authors">
-                                    <PublicAuthorLine
-                                      author={pub.manuscript.author}
-                                      coAuthors={pub.manuscript.coAuthors}
-                                    />
-                                  </span>
-                                  <time className="jida-issue-article-date" dateTime={pub.publishedAt}>
-                                    Published Online: {pub.publishedAt.slice(0, 10)}
-                                  </time>
-                                </li>
-                              ))}
-                            </ol>
-                          ) : (
-                            <p className="jida-issue-empty">No articles in this issue yet.</p>
-                          )
-                        )}
+                        </Link>
                       </div>
                     );
                   })}
