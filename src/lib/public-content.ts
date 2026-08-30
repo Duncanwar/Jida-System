@@ -36,3 +36,38 @@ export function sortIssues(issues: PublicIssue[]): PublicIssue[] {
         .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)),
     }));
 }
+
+/**
+ * Readable, stable address for an issue page — "volume-5-issue-1-2024".
+ *
+ * Built from the issue's own numbering rather than its database id so the URL
+ * means something to a reader, survives a database restore, and matches how the
+ * issue is cited in print.
+ */
+export function issueSlug(issue: { volume: number; issueNumber: number; year: number }): string {
+  return `volume-${issue.volume}-issue-${issue.issueNumber}-${issue.year}`;
+}
+
+/** A journal announcement published on the public site. */
+export interface PublicAnnouncement {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+/**
+ * Announcements the editors marked public. Same defensive shape as
+ * `fetchPublishedIssues`: a backend outage degrades to an empty list rather
+ * than a 500, because these feed the sitemap as well as the page.
+ */
+export async function fetchPublicAnnouncements(): Promise<PublicAnnouncement[]> {
+  try {
+    const res = await fetch(`${API}/api/public/announcements`, { cache: "no-store" });
+    if (!res.ok) return [];
+    return (await res.json()) as PublicAnnouncement[];
+  } catch {
+    return [];
+  }
+}

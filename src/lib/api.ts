@@ -537,8 +537,31 @@ export async function postAnnouncement(data: {
   body: string;
   submissionDeadline?: string | null;
   openForSubmissions?: boolean;
+  /** Also email the public newsletter list — e.g. for a call for papers. */
+  notifySubscribers?: boolean;
+  /** Publish it on the public announcements page, where anyone can read it. */
+  isPublic?: boolean;
 }) {
-  return request<{ recipientCount: number }>("POST", "/api/editor/announcements", data);
+  return request<{
+    recipientCount: number;
+    newsletter: NewsletterResult;
+    announcement: { id: string; slug: string; isPublic: boolean };
+  }>("POST", "/api/editor/announcements", data);
+}
+
+/** Outcome of one newsletter broadcast. */
+export interface NewsletterResult {
+  recipients: number;
+  delivered: number;
+}
+
+/** Tells the public newsletter list that an issue is published. */
+export async function notifyIssueSubscribers(issueId: string) {
+  return request<NewsletterResult>(
+    "POST",
+    `/api/editor/issues/${issueId}/notify-subscribers`,
+    {},
+  );
 }
 
 // ─── Public ────────────────────────────────────────────────────────────────
@@ -561,6 +584,15 @@ export async function getPublicArticle(slug: string) {
 
 export async function subscribeNewsletter(email: string) {
   return request<{ message: string }>("POST", "/api/public/subscribe", { email });
+}
+
+/** Removes an address from the newsletter using the token from the email. */
+export async function unsubscribeNewsletter(token: string) {
+  return request<{ message: string; email: string }>(
+    "POST",
+    `/api/public/unsubscribe/${encodeURIComponent(token)}`,
+    {},
+  );
 }
 
 // ─── Notifications (manuscript reminders) ──────────────────────────────────
@@ -870,6 +902,8 @@ export interface PublicIssue {
   issueNumber: number;
   year: number;
   title?: string | null;
+  /** Returned by /api/public/issues; a special issue is labelled as one. */
+  specialIssue?: boolean;
   createdAt: string;
   _count?: { publications: number };
   publications?: IssuePublication[];
@@ -897,7 +931,13 @@ export interface PublicArticle {
   /** The manuscript this article was published from — lets the editor screen
    *  already-published work out of the "awaiting publication" queue. */
   manuscriptId?: string;
-  issue?: { volume: number; issueNumber: number; year: number; title?: string | null } | null;
+  issue?: {
+    id: string;
+    volume: number;
+    issueNumber: number;
+    year: number;
+    title?: string | null;
+  } | null;
   manuscript: {
     title: string;
     abstract?: string;

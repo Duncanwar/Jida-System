@@ -6712,72 +6712,6 @@ button.jida-password-toggle:hover {
 /* ─── Editor › Publication › Google Scholar indexing panel ───────────────── */
 
 
-/* ─── Archive › crawlable issue index ────────────────────────────────────── */
-
-/* A plain, server-rendered table of contents. It exists mainly so search
-   engines (and Google Scholar, whose crawler ignores JavaScript) can reach
-   every article, but it is a genuinely useful full listing for readers too, so
-   it is styled as a quiet closing section rather than hidden. Hiding it with
-   display:none would make it cloaking, which search engines penalise. */
-.jida-archive-index {
-  max-width: 1100px;
-  margin: 0 auto 3rem;
-  padding: 1.9rem 2rem 2.1rem;
-  border-top: 1px solid #dce5f0;
-}
-
-.jida-archive-index > h2 {
-  font-size: 1.15rem;
-  color: #10223d;
-  margin-bottom: 0.3rem;
-}
-
-.jida-archive-index > p {
-  color: #5a7194;
-  font-size: 0.88rem;
-  margin-bottom: 1.5rem;
-}
-
-.jida-archive-index section {
-  margin-bottom: 1.4rem;
-}
-
-.jida-archive-index h3 {
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #6a81a5;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid #e7edf5;
-  margin-bottom: 0.6rem;
-}
-
-.jida-archive-index ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-  gap: 0.3rem 1.6rem;
-}
-
-.jida-archive-index li a {
-  display: block;
-  padding: 0.35rem 0;
-  font-size: 0.87rem;
-  line-height: 1.45;
-  color: #24507f;
-  text-decoration: none;
-}
-
-.jida-archive-index li a:hover,
-.jida-archive-index li a:focus-visible {
-  color: #10223d;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 /* ─── Editor › Publication ───────────────────────────────────────────────── */
 
 /* .jida-workspace is a grid, so a bare button child stretches across the whole
@@ -6840,3 +6774,103 @@ button.jida-password-toggle:hover {
 }
 
 
+
+
+/* The issue page's own table of contents. */
+.jida-issue-contents {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.jida-issue-contents a {
+  color: #24507f;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.jida-issue-contents a:hover,
+.jida-issue-contents a:focus-visible {
+  color: #10223d;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A closed year in the archive accordion. The panel stays in the DOM so search
+   engines can follow the issue links inside it — hiding it by not rendering it
+   would leave a crawler with no route to any article. */
+.jida-archive-accordion-panel.collapsed {
+  display: none;
+}
+
+/* ─── Public announcements ───────────────────────────────────────────────── */
+
+.jida-announcement-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.jida-announcement-card > time {
+  display: block;
+  color: #6a81a5;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jida-announcement-card h3 {
+  margin: 0.45rem 0 0.5rem;
+  font-size: 1.12rem;
+  line-height: 1.35;
+}
+
+.jida-announcement-card h3 a {
+  color: #10223d;
+  text-decoration: none;
+}
+
+.jida-announcement-card h3 a:hover,
+.jida-announcement-card h3 a:focus-visible {
+  color: #24507f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.jida-announcement-card > p {
+  margin: 0 0 0.8rem;
+  color: #5a7194;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.jida-announcement-more {
+  color: #24507f;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.jida-announcement-more:hover,
+.jida-announcement-more:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The single announcement's text. Generous measure — it is read, not scanned. */
+.jida-announcement-body p {
+  margin: 0 0 1rem;
+  max-width: 68ch;
+  color: #2b3f5c;
+  font-size: 0.97rem;
+  line-height: 1.75;
+}
+
+.jida-announcement-body p:last-child {
+  margin-bottom: 0;
+}
