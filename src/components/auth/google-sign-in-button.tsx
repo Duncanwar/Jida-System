@@ -142,7 +142,6 @@ export function GoogleSignInButton({
     try {
       const session = await googleSignIn(
         response.credential,
-        latest.current.role,
         latest.current.institution,
       );
       latest.current.onSuccess(session);

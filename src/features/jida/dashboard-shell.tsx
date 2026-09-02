@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Gavel,
   BookOpenCheck,
+  UserCheck,
   Shield,
   Settings2,
 } from "lucide-react";
@@ -48,6 +49,8 @@ export type DashboardView =
   | "publication"
   // Reached from the Publication stat cards, not the sidebar.
   | "indexing"
+  // Chief editor and admin only — the author approval queue.
+  | "approvals"
   // Admin-only.
   | "roles"
   | "settings";
@@ -93,6 +96,7 @@ export function DashboardSidebar({
   showAnnouncements,
   showHistory,
   editorPages,
+  showApprovals,
   showRoles,
   showSettings,
 }: {
@@ -107,6 +111,8 @@ export function DashboardSidebar({
   showHistory?: boolean;
   /** Editor only — Manuscripts/Peer Review/Decisions/Publication replace the generic "tasks" page. */
   editorPages?: boolean;
+  /** Chief editor and admin only — the queue of authors awaiting recognition. */
+  showApprovals?: boolean;
   /** Admin only — static reference matrix of what each role can actually do. */
   showRoles?: boolean;
   /** Admin only — real settings (auto-backups, in-app notifications) plus a "Planned" 2FA placeholder. */
@@ -132,6 +138,7 @@ export function DashboardSidebar({
     ...(showTeam ? [{ id: "team" as const, label: "Team", icon: Users }] : []),
     ...(showAnnouncements ? [{ id: "announcements" as const, label: "Announcements", icon: Megaphone }] : []),
     ...(showHistory ? [{ id: "history" as const, label: "Review History", icon: History }] : []),
+    ...(showApprovals ? [{ id: "approvals" as const, label: "Account Approvals", icon: UserCheck }] : []),
     ...(showRoles ? [{ id: "roles" as const, label: "Roles & Permissions", icon: Shield }] : []),
     ...(showSettings ? [{ id: "settings" as const, label: "System Settings", icon: Settings2 }] : []),
   ];

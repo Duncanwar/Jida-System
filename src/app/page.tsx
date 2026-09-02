@@ -405,20 +405,6 @@ export default function Home() {
                   aphrodice.nsabimana@auca.ac.rw
                 </a>
               </li>
-              <li>
-                <strong>Mr. Manirakiza Jean Baptiste</strong>
-                <span>Typesetting &amp; Marketing Advisor</span>
-                <a href="mailto:jeanbaptiste.manirakiza@auca.ac.rw">
-                  jeanbaptiste.manirakiza@auca.ac.rw
-                </a>
-              </li>
-              <li>
-                <strong>Dr. Gatsinzi Patrick</strong>
-                <span>Typesetting &amp; Marketing Advisor</span>
-                <a href="mailto:Patrick.gatsinzi@auca.ac.rw">
-                  Patrick.gatsinzi@auca.ac.rw
-                </a>
-              </li>
             </ul>
             <p className="jida-footer-enquiries">
               Enquiries: Prof. Kayigema Jacques · +250 788 866 769
