@@ -142,10 +142,14 @@ export async function login(email: string, password: string, role: Role) {
  * Registration no longer returns an access token — the account is inactive
  * until the emailed verification link is followed (FR-AUTH-1).
  */
+/**
+ * Creates an author account. There is no `role` parameter by design — the
+ * server always creates an AUTHOR, and offering the field here would suggest
+ * otherwise. Reviewers arrive by invitation; editors are appointed by an admin.
+ */
 export async function register(data: {
   email: string;
   password: string;
-  role: Role;
   name?: string;
   institution?: string;
 }) {
@@ -183,10 +187,10 @@ export async function getGoogleConfig() {
 }
 
 /** Exchanges a Google Identity Services credential for a JIDA session. */
-export async function googleSignIn(credential: string, role?: Role, institution?: string) {
+/** Google sign-in. Like `register`, it takes no role: a new account is an AUTHOR. */
+export async function googleSignIn(credential: string, institution?: string) {
   return request<AuthSession & { created: boolean }>("POST", "/api/auth/google", {
     credential,
-    ...(role && role !== "ADMIN" ? { role } : {}),
     ...(institution ? { institution } : {}),
   });
 }
@@ -204,10 +208,50 @@ export async function resetPassword(token_: string, newPassword: string) {
 
 // ─── Profile ───────────────────────────────────────────────────────────────
 
+/** Whether the journal has recognised an account. Only self-registration waits. */
+export type AccountStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export async function getMe() {
-  return request<{ id: string; email: string; role: Role; name?: string | null; institution?: string }>(
-    "GET",
-    "/api/me",
+  return request<{
+    id: string;
+    email: string;
+    role: Role;
+    name?: string | null;
+    institution?: string;
+    accountStatus?: AccountStatus;
+    rejectionReason?: string | null;
+  }>("GET", "/api/me");
+}
+
+/** An account waiting for the chief editor or admin to recognise it. */
+export interface PendingAccount {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  affiliation?: string | null;
+  emailVerified: boolean;
+  createdAt: string;
+}
+
+/** The approval queue. Chief editor and admin only. */
+export async function getAccountApprovals() {
+  return request<PendingAccount[]>("GET", "/api/editor/account-approvals");
+}
+
+/**
+ * Approves or refuses a waiting account. A refusal carries its reason, which is
+ * emailed to the person — a silent "no" only produces a second registration.
+ */
+export async function decideAccountApproval(
+  id: string,
+  approved: boolean,
+  reason?: string,
+) {
+  return request<{ id: string; email: string; accountStatus: AccountStatus }>(
+    "PATCH",
+    `/api/editor/account-approvals/${id}`,
+    { approved, ...(reason ? { reason } : {}) },
   );
 }
 
@@ -537,14 +581,16 @@ export async function postAnnouncement(data: {
   body: string;
   submissionDeadline?: string | null;
   openForSubmissions?: boolean;
-  /** Also email the public newsletter list — e.g. for a call for papers. */
-  notifySubscribers?: boolean;
-  /** Publish it on the public announcements page, where anyone can read it. */
-  isPublic?: boolean;
+  /**
+   * Who it reaches. EVERYONE also publishes it publicly and emails the
+   * newsletter list; MEMBERS and STAFF stay inside the app.
+   */
+  audience?: "EVERYONE" | "MEMBERS" | "STAFF";
 }) {
   return request<{
     recipientCount: number;
     newsletter: NewsletterResult;
+    audience: "EVERYONE" | "MEMBERS" | "STAFF";
     announcement: { id: string; slug: string; isPublic: boolean };
   }>("POST", "/api/editor/announcements", data);
 }

@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { issueSlug } from "@/lib/public-content";
 import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown, ChevronRight, Download, Mail, UserPlus } from "lucide-react";
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   getManuscripts,
   submitManuscript,
   submitRevision,
   getMe,
+  getAccountApprovals,
+  decideAccountApproval,
   patchMe,
   getSubmissionSettings,
   downloadFile,
@@ -58,6 +60,8 @@ import {
   type PublicAuthor,
   type PublicCoAuthor,
   type AuthorVisibleReview,
+  type AccountStatus,
+  type PendingAccount,
   type ReviewRating,
   type ReviewFormResult,
   type ManuscriptSummary,
@@ -370,9 +374,13 @@ export function AppHeader() {
     router.push("/");
   }
 
+  // Every page a signed-out reader can land on. Miss one and its header loses
+  // the navigation and the sign-in link, stranding the reader on it.
   const isPublicPage =
     pathname === "/" ||
     pathname.startsWith("/archive") ||
+    pathname.startsWith("/announcements") ||
+    pathname === "/about" ||
     pathname === "/login" ||
     pathname === "/signup";
   // The badge names the account's actual tier ("Chief Editor"), which is more
@@ -398,11 +406,16 @@ export function AppHeader() {
             <AboutMenu />
             <Link href="/#jida-articles-section">Articles &amp; Publication</Link>
 
+            {/* Sign in only. Readers need no account to read or download, so a
+                Register button in the header invites accounts nobody wanted.
+                Authors — the one group who must register — reach it from
+                "Submit a manuscript" in the footer, and /signup still works
+                directly. This is tidiness, not security: the page is public
+                either way. */}
             {!isLoggedIn && (
-              <span className="jida-auth-group" aria-label="Account access">
-                <Link href="/login" className="jida-auth-group-login">Login</Link>
-                <Link href="/signup" className="jida-auth-group-register">Register</Link>
-              </span>
+              <Link href="/login" className="jida-header-signin">
+                Sign in
+              </Link>
             )}
 
             {isLoggedIn && (
@@ -777,6 +790,8 @@ export function AuthorWorkspace() {
   const [deadline, setDeadline] = useState<string | null>(null);
   const [openForSubmissions, setOpenForSubmissions] = useState(true);
   const [submitTab, setSubmitTab] = useState<"details" | "coauthors">("details");
+  const [accountStatus, setAccountStatus] = useState<AccountStatus>("APPROVED");
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [coAuthors, setCoAuthors] = useState<CoAuthor[]>([]);
   const [referencesText, setReferencesText] = useState("");
   const submitRef = useRef<HTMLFormElement>(null);
@@ -821,6 +836,22 @@ export function AuthorWorkspace() {
         setOpenForSubmissions(s.openForSubmissions);
       } catch {
         /* non-blocking */
+      }
+    })();
+  }, []);
+
+  // Read live rather than from the stored session: an author approved while
+  // they were signed in must see the submission form on their next visit, not
+  // a stale "waiting" notice until they sign out and back in.
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await getMe();
+        setAccountStatus(me.accountStatus ?? "APPROVED");
+        setRejectionReason(me.rejectionReason ?? null);
+      } catch {
+        // An account that cannot be read is not evidence of a pending one —
+        // stay out of the author's way rather than blocking on a network blip.
       }
     })();
   }, []);
@@ -1104,7 +1135,33 @@ export function AuthorWorkspace() {
         )}
       </div>
 
-      {activePanel === null && (
+      {/* The approval gate, shown in place of the button rather than beside it.
+          Letting someone fill in a long submission form and refusing it at the
+          end is the version of this that wastes their evening. */}
+      {activePanel === null && accountStatus === "PENDING" && (
+        <div className="jida-account-gate">
+          <strong>Your account is waiting to be approved</strong>
+          <p>
+            An editor is reviewing your registration. You can look around in the
+            meantime — you will be emailed as soon as your account is approved,
+            and the submission form will appear here.
+          </p>
+        </div>
+      )}
+
+      {activePanel === null && accountStatus === "REJECTED" && (
+        <div className="jida-account-gate jida-account-gate-refused">
+          <strong>Your account was not approved for submissions</strong>
+          <p>
+            {rejectionReason
+              ? rejectionReason
+              : "The editorial team has not approved this account for submissions."}{" "}
+            If you believe this is a mistake, contact the editorial team.
+          </p>
+        </div>
+      )}
+
+      {activePanel === null && accountStatus === "APPROVED" && (
         <div className="jida-action-launch">
           <button
             type="button"
@@ -2064,6 +2121,52 @@ export function EditorWorkspace() {
   const [indexFilter, setIndexFilter] = useState<"all" | "indexed" | "not-indexed">("all");
 
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
+
+  // Deciding who the journal recognises is narrower than editorial work: a
+  // plain editor handles manuscripts but does not admit people.
+  const [canApproveAccounts, setCanApproveAccounts] = useState(false);
+  const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([]);
+  const [approvalMsg, setApprovalMsg] = useState<string | null>(null);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  useEffect(() => {
+    const held = readRoles();
+    setCanApproveAccounts(held.includes("CHIEF_EDITOR") || held.includes("ADMIN"));
+  }, []);
+
+  const fetchApprovals = useCallback(async () => {
+    try {
+      setPendingAccounts(await getAccountApprovals());
+    } catch {
+      // A plain editor gets 403 here; the link is hidden for them anyway.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView === "approvals" && canApproveAccounts) fetchApprovals();
+  }, [activeView, canApproveAccounts, fetchApprovals]);
+
+  async function handleDecide(account: PendingAccount, approved: boolean) {
+    setDecidingId(account.id);
+    setApprovalMsg(null);
+    try {
+      await decideAccountApproval(account.id, approved, approved ? undefined : rejectReason.trim());
+      setApprovalMsg(
+        approved
+          ? `${account.email} approved. They can submit manuscripts now, and have been emailed.`
+          : `${account.email} was not approved. They have been emailed the reason.`,
+      );
+      setRejectingId(null);
+      setRejectReason("");
+      fetchApprovals();
+    } catch (err) {
+      setApprovalMsg(err instanceof Error ? err.message : "Could not record that decision.");
+    } finally {
+      setDecidingId(null);
+    }
+  }
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortOrder, setSortOrder] = useState<"" | "az" | "za">("");
@@ -2420,8 +2523,8 @@ export function EditorWorkspace() {
     const body = String(fd.get("body") ?? "").trim();
     const submissionDeadline = String(fd.get("submissionDeadline") ?? "").trim();
     const openForSubmissionsValue = fd.get("openForSubmissions");
-    const notifySubscribers = fd.get("notifySubscribers") === "on";
-    const isPublic = fd.get("isPublic") === "on";
+    const audience = (String(fd.get("audience") ?? "MEMBERS") || "MEMBERS") as
+      "EVERYONE" | "MEMBERS" | "STAFF";
     if (!title || !body) {
       setAnnouncementMsg("Title and message are required.");
       setAnnouncementSending(false);
@@ -2433,12 +2536,15 @@ export function EditorWorkspace() {
         body,
         ...(submissionDeadline ? { submissionDeadline: new Date(submissionDeadline).toISOString() } : {}),
         ...(openForSubmissionsValue !== null ? { openForSubmissions: openForSubmissionsValue === "on" } : {}),
-        ...(notifySubscribers ? { notifySubscribers: true } : {}),
-        ...(isPublic ? { isPublic: true } : {}),
+        audience,
       });
       const inApp = `Announcement sent to ${res.recipientCount} ${res.recipientCount === 1 ? "person" : "people"}.`;
       // Report delivery honestly: some addresses can fail while others succeed.
-      const published = res.announcement?.isPublic ? " Published on the public announcements page." : "";
+      const published = res.announcement?.isPublic
+        ? " Published on the public announcements page."
+        : res.audience === "STAFF"
+          ? " Staff only — authors were not notified."
+          : "";
       const mailed = res.newsletter?.recipients
         ? ` Emailed to ${res.newsletter.delivered} of ${res.newsletter.recipients} newsletter subscriber${res.newsletter.recipients === 1 ? "" : "s"}.`
         : "";
@@ -2773,7 +2879,18 @@ export function EditorWorkspace() {
 
   return (
     <div className="jida-dash-layout">
-      <DashboardSidebar role="EDITOR" active={activeView} onNavigate={setActiveView} showTeam={true} showAnnouncements={true} editorPages={true} />
+      {/* Account Approvals is chief-editor-and-admin work, so the link only
+          appears for accounts that hold one of those. The server enforces it
+          regardless — this just avoids showing a plain editor a dead end. */}
+      <DashboardSidebar
+        role="EDITOR"
+        active={activeView}
+        onNavigate={setActiveView}
+        showTeam={true}
+        showAnnouncements={true}
+        editorPages={true}
+        showApprovals={canApproveAccounts}
+      />
       <div className="jida-dash-content">
     <section className="jida-workspace">
       {activeView === "dashboard" && (
@@ -3283,6 +3400,104 @@ export function EditorWorkspace() {
         </>
       )}
 
+      {activeView === "approvals" && canApproveAccounts && (
+        <>
+        <div className="jida-page-title">
+          <div>
+            <p className="jida-section-kicker">Editor Workspace</p>
+            <h2>Account Approvals</h2>
+            <p>People who registered as authors and are waiting to be recognised by the journal.</p>
+          </div>
+        </div>
+
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">Waiting</p><h2>Author registrations</h2></div>
+            <span className="jida-badge">{pendingAccounts.length} waiting</span>
+          </div>
+
+          {approvalMsg && (
+            <ActionResultMessage
+              message={approvalMsg}
+              isSuccess={!approvalMsg.startsWith("Could not")}
+            />
+          )}
+
+          {pendingAccounts.length === 0 ? (
+            <p className="jida-queue-empty">
+              Nobody is waiting. New author registrations appear here.
+            </p>
+          ) : (
+            <div className="jida-approval-list">
+              {pendingAccounts.map((a) => {
+                const name = [a.firstName, a.lastName].filter(Boolean).join(" ") || "—";
+                return (
+                  <div key={a.id} className="jida-approval-row">
+                    <div className="jida-approval-who">
+                      <strong>{name}</strong>
+                      <span>{a.email}</span>
+                      <span className="jida-approval-meta">
+                        {a.affiliation || "No affiliation given"}
+                        {" · registered "}
+                        {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(a.createdAt))}
+                        {!a.emailVerified && " · email not yet confirmed"}
+                      </span>
+                    </div>
+
+                    {rejectingId === a.id ? (
+                      <div className="jida-approval-reject">
+                        <input
+                          type="text"
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="Reason — this is emailed to them"
+                          aria-label={`Reason for refusing ${a.email}`}
+                        />
+                        <button
+                          type="button"
+                          className="jida-btn-danger-sm"
+                          disabled={decidingId === a.id || !rejectReason.trim()}
+                          onClick={() => handleDecide(a, false)}
+                        >
+                          {decidingId === a.id ? "…" : "Confirm refusal"}
+                        </button>
+                        <button
+                          type="button"
+                          className="jida-btn-secondary jida-btn-sm"
+                          onClick={() => { setRejectingId(null); setRejectReason(""); }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="jida-approval-actions">
+                        <button
+                          type="button"
+                          className="jida-btn-primary jida-btn-sm"
+                          disabled={decidingId === a.id}
+                          onClick={() => handleDecide(a, true)}
+                        >
+                          {decidingId === a.id ? "…" : "Approve"}
+                        </button>
+                        <button
+                          type="button"
+                          className="jida-btn-secondary jida-btn-sm"
+                          disabled={decidingId === a.id}
+                          onClick={() => { setRejectingId(a.id); setRejectReason(""); }}
+                        >
+                          Refuse
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+        </>
+      )}
+
       {activeView === "publication" && (
         <>
         <div className="jida-page-title">
@@ -3640,16 +3855,37 @@ export function EditorWorkspace() {
                 <input type="checkbox" name="openForSubmissions" defaultChecked style={{ width: "auto" }} />
                 Submissions are open
               </label>
-              {/* Both off by default: most announcements are internal, and
-                  neither publishing nor emailing can be taken back. */}
-              <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                <input type="checkbox" name="isPublic" style={{ width: "auto" }} />
-                Show this on the public announcements page
-              </label>
-              <label style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                <input type="checkbox" name="notifySubscribers" style={{ width: "auto" }} />
-                Also email this to newsletter subscribers
-              </label>
+              {/* One question, not independent tick boxes. The audiences are
+                  nested, so checkboxes let "staff only" and "publish to the
+                  world" be ticked together — and neither publishing nor
+                  emailing can be undone. Defaults to Members, the narrower
+                  of the two non-destructive choices. */}
+              <fieldset className="jida-audience">
+                <legend>Who is this for?</legend>
+                <label>
+                  <input type="radio" name="audience" value="EVERYONE" />
+                  <span>
+                    <strong>Everyone</strong>
+                    Public announcements page, newsletter email, and everyone with a
+                    JIDA account. Use for a call for papers or a new issue.
+                  </span>
+                </label>
+                <label>
+                  <input type="radio" name="audience" value="MEMBERS" defaultChecked />
+                  <span>
+                    <strong>JIDA members</strong>
+                    Authors, reviewers and editors, in the app only. Not published,
+                    no email.
+                  </span>
+                </label>
+                <label>
+                  <input type="radio" name="audience" value="STAFF" />
+                  <span>
+                    <strong>Staff only</strong>
+                    Reviewers, editors and admins. Authors do not see it.
+                  </span>
+                </label>
+              </fieldset>
               <button type="submit" className="jida-btn-primary" disabled={announcementSending}>
                 {announcementSending ? "Sending…" : "Send Announcement"}
               </button>

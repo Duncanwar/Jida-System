@@ -178,18 +178,6 @@ export default function AboutPage() {
             <p>+250 788 668 260</p>
             <a href="mailto:aphrodice.nsabimana@auca.ac.rw">aphrodice.nsabimana@auca.ac.rw</a>
           </article>
-          <article className="jida-board-card">
-            <h3>Mr. Manirakiza Jean Baptiste</h3>
-            <p className="jida-board-role">Typesetting &amp; Marketing Advisor</p>
-            <p>+250 788 474 889</p>
-            <a href="mailto:jeanbaptiste.manirakiza@auca.ac.rw">jeanbaptiste.manirakiza@auca.ac.rw</a>
-          </article>
-          <article className="jida-board-card">
-            <h3>Dr. Gatsinzi Patrick</h3>
-            <p className="jida-board-role">Typesetting &amp; Marketing Advisor</p>
-            <p>+250 788 770 170</p>
-            <a href="mailto:Patrick.gatsinzi@auca.ac.rw">Patrick.gatsinzi@auca.ac.rw</a>
-          </article>
         </div>
       </section>
 

@@ -78,10 +78,13 @@ describe("api client", () => {
 
   it("registers via POST /api/auth/register", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ user: { id: "u2" } }));
-    await register({ email: "new@b.c", password: "password123", role: "AUTHOR" });
+    await register({ email: "new@b.c", password: "password123" });
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/auth\/register$/);
     expect(init.method).toBe("POST");
+    // Signing up may only ever create an author. Sending a role would let a
+    // stranger ask to be an editor, which is what this closes.
+    expect(JSON.parse(init.body).role).toBeUndefined();
   });
 
   // The backend replies with `{ error }`; only reading `message` turned every
@@ -143,22 +146,26 @@ describe("google sign-in client (FR-AUTH-2)", () => {
       jsonResponse({ accessToken: "tok", user: { id: "g1", role: "REVIEWER" }, created: true }),
     );
 
-    await googleSignIn("google-id-token", "REVIEWER", "AUCA");
+    await googleSignIn("google-id-token", "AUCA");
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/auth\/google$/);
     expect(JSON.parse(init.body)).toEqual({
       credential: "google-id-token",
-      role: "REVIEWER",
       institution: "AUCA",
     });
   });
 
-  // Admins are provisioned by the seed script, never self-served through Google.
-  it("never requests the ADMIN role", async () => {
+  // Google sign-in is the second door into registration. It must not carry a
+  // role either, or closing the signup form would achieve nothing.
+  it("never sends a role, whatever the caller does", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ accessToken: "tok", user: { id: "g1" } }));
 
-    await googleSignIn("google-id-token", "ADMIN");
+    await (googleSignIn as unknown as (c: string, i?: string, r?: string) => Promise<unknown>)(
+      "google-id-token",
+      "AUCA",
+      "EDITOR",
+    );
 
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).role).toBeUndefined();
   });

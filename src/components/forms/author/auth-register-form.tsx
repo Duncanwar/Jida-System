@@ -17,7 +17,6 @@ import { dashboardFor, persistSession } from "@/lib/session";
  */
 export function AuthRegisterForm() {
   const router = useRouter();
-  const [role, setRole] = useState<Role>("AUTHOR");
   const [institution, setInstitution] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -51,7 +50,6 @@ export function AuthRegisterForm() {
       await register({
         email,
         password,
-        role,
         name: String(fd.get("fullName") ?? ""),
         institution: String(fd.get("institution") ?? ""),
       });
@@ -121,19 +119,14 @@ export function AuthRegisterForm() {
               </p>
             ) : null}
 
-            <div className="jida-login-field">
-              <label htmlFor="role">Role</label>
-              <select
-                id="role"
-                name="role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-              >
-                <option value="AUTHOR">Author</option>
-                <option value="REVIEWER">Reviewer</option>
-                <option value="EDITOR">Editor</option>
-              </select>
-            </div>
+            {/* No role picker. Signing up creates an author account — the only
+                role anyone may give themselves. Reviewers are invited by an
+                editor, and editors are appointed by an admin. */}
+            <p className="jida-auth-role-note">
+              Signing up creates an <strong>author account</strong>, for submitting
+              manuscripts to JIDA. Reviewers and editors are invited by the
+              editorial team.
+            </p>
 
             <div className="jida-login-field">
               <label htmlFor="fullName">Full name</label>
@@ -231,7 +224,6 @@ export function AuthRegisterForm() {
           {/* Google accounts skip verification — Google has already done it. */}
           <GoogleSignInButton
             text="signup_with"
-            role={role}
             institution={institution}
             onSuccess={(session) => {
               const actualRole = persistSession(session);
