@@ -7041,3 +7041,176 @@ button.jida-password-toggle:hover {
   border-radius: 7px;
   font-size: 0.8rem;
 }
+
+/* ── Reviewer review-queue table ──────────────────────────────────────────
+   The queue has seven columns and titles that run long, which used to push
+   the table past the card and leave the reviewer scrolling sideways. Fixed
+   column proportions keep it inside the card at any width: the title wraps
+   over as many lines as it needs, and every control is sized to its own
+   label instead of stretching to fill the cell. ─────────────────────────── */
+
+.jida-queue-table td .jida-queue-title {
+  display: block;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #10223d;
+}
+
+/* Status chips in any dashboard table. The ".jida-table td span" rule turns
+   spans into blocks — right for the muted subtitle under a title, wrong for a
+   badge, which then stretches the full width of its column instead of hugging
+   its own word. Every queue across Author, Reviewer, Editor and Admin reads
+   the same way with this. */
+.jida-table td .jida-badge {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  /* A pill that has wrapped onto three lines reads as a blob; squaring the
+     chip off keeps a two-line label looking deliberate. */
+  border-radius: 8px;
+  padding: 0.22rem 0.45rem;
+  line-height: 1.25;
+}
+
+/* The reminder button sits in ".jida-track-actions", a stretch column 11rem
+   wide, so it used to be sized by the column rather than by its own label.
+   "align-self" opts it out of that stretch without resizing its siblings, and
+   is inert in the reviewer queue's wrapping row. */
+.jida-reminder-btn {
+  align-self: flex-start;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.jida-queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.jida-queue-actions > * {
+  flex: 0 0 auto;
+}
+
+.jida-queue-btn {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.24rem 0.6rem;
+  border: 1px solid #cddcf2;
+  border-radius: 999px;
+  background: #eef3fc;
+  color: #2b4d80;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.jida-queue-btn:hover {
+  background: #dde9fa;
+  border-color: #b6cdec;
+}
+
+/* Download — icon only, so the File column costs a fixed 26px instead of a
+   word's worth of column. */
+.jida-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #cddcf2;
+  border-radius: 8px;
+  background: #eef3fc;
+  color: #2b4d80;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.jida-icon-btn:hover {
+  background: #dde9fa;
+  border-color: #b6cdec;
+}
+
+/* Below 640px the table already collapses into stacked cards, so the fixed
+   proportions only apply from tablet up. */
+@media (min-width: 641px) {
+  .jida-queue-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .jida-queue-table th,
+  .jida-queue-table td {
+    padding: 0.5rem 0.45rem;
+    overflow-wrap: break-word;
+    vertical-align: middle;
+  }
+
+  .jida-queue-table td:nth-child(1) {
+    overflow-wrap: anywhere;
+  }
+
+  .jida-queue-table th {
+    font-size: 0.55rem;
+    letter-spacing: 0.02em;
+    white-space: normal;
+  }
+
+  .jida-queue-table td {
+    font-size: 0.7rem;
+  }
+
+  .jida-queue-table th:nth-child(1),
+  .jida-queue-table td:nth-child(1) { width: 27%; }
+  .jida-queue-table th:nth-child(2),
+  .jida-queue-table td:nth-child(2) { width: 11%; }
+  .jida-queue-table th:nth-child(3),
+  .jida-queue-table td:nth-child(3) { width: 11%; }
+  .jida-queue-table th:nth-child(4),
+  .jida-queue-table td:nth-child(4) { width: 11%; }
+  .jida-queue-table th:nth-child(5),
+  .jida-queue-table td:nth-child(5) { width: 11%; }
+  .jida-queue-table th:nth-child(6),
+  .jida-queue-table td:nth-child(6) { width: 7%; }
+  .jida-queue-table th:nth-child(7),
+  .jida-queue-table td:nth-child(7) { width: 22%; }
+}
+
+/* The Dashboard shows the queue as a teaser beside the activity feed, so it
+   only gets half the card width. There it drops to the columns that drive a
+   decision — title, deadline, progress, file, actions — and the full table
+   still lives one click away under My Assignments. Below 769px the grid is a
+   single column again and every column comes back. */
+@media (min-width: 769px) {
+  .jida-queue-preview th:nth-child(2),
+  .jida-queue-preview td:nth-child(2),
+  .jida-queue-preview th:nth-child(5),
+  .jida-queue-preview td:nth-child(5) {
+    display: none;
+  }
+
+  .jida-queue-preview th:nth-child(1),
+  .jida-queue-preview td:nth-child(1) { width: 34%; }
+  .jida-queue-preview th:nth-child(3),
+  .jida-queue-preview td:nth-child(3) { width: 15%; }
+  .jida-queue-preview th:nth-child(4),
+  .jida-queue-preview td:nth-child(4) { width: 16%; }
+  .jida-queue-preview th:nth-child(6),
+  .jida-queue-preview td:nth-child(6) { width: 9%; }
+  .jida-queue-preview th:nth-child(7),
+  .jida-queue-preview td:nth-child(7) { width: 26%; }
+}

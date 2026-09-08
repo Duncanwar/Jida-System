@@ -455,11 +455,11 @@ export function ReminderButton({ manuscriptId }: { manuscriptId: string }) {
     <>
       <button
         type="button"
-        className="jida-btn-secondary jida-btn-sm"
+        className="jida-btn-secondary jida-btn-sm jida-reminder-btn"
         onClick={() => setOpen(true)}
       >
         <Clock size={13} style={{ marginRight: "0.3rem", verticalAlign: "-2px" }} />
-        Remind me
+        Reminder
       </button>
       {/* Reuses the shared portaled dialog — always centred in the viewport,
           so it can never spill off-screen wherever the card sits. */}

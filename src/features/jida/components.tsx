@@ -37,6 +37,7 @@ import {
   sendReviewerInvitation,
   getReviewerInvitations,
   type ReviewerInvitation,
+  type InvitationStatus,
   getPublicIssues,
   getPublicArticles,
   adminGetUsers,
@@ -1410,7 +1411,6 @@ export function ReviewerWorkspace() {
   const [reviewMsg, setReviewMsg] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [presetAssignmentId, setPresetAssignmentId] = useState<string>("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
   const [query, setQuery] = useState("");
@@ -1418,6 +1418,9 @@ export function ReviewerWorkspace() {
   const [sortOrder, setSortOrder] = useState<"" | "az" | "za">("");
   const [historyQuery, setHistoryQuery] = useState("");
   const [historySortOrder, setHistorySortOrder] = useState<"" | "az" | "za">("");
+  /** "" = every recommendation; otherwise one of the four verdicts a
+   * reviewer can give on the evaluation form. */
+  const [historyRecFilter, setHistoryRecFilter] = useState<"" | ReviewRecommendation>("");
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [respondBusy, setRespondBusy] = useState(false);
@@ -1608,9 +1611,11 @@ export function ReviewerWorkspace() {
     return [...groups.entries()].sort(([a], [b]) => (a === "" ? 1 : b === "" ? -1 : b.localeCompare(a)));
   }
 
-  const filteredHistory = history.filter(
-    (h) => !historyQuery || (h.manuscriptTitle ?? "").toLowerCase().includes(historyQuery.toLowerCase()),
-  );
+  const filteredHistory = history.filter((h) => {
+    if (historyRecFilter && h.recommendation !== historyRecFilter) return false;
+    if (historyQuery && !(h.manuscriptTitle ?? "").toLowerCase().includes(historyQuery.toLowerCase())) return false;
+    return true;
+  });
   const sortedHistory = historySortOrder
     ? filteredHistory
         .slice()
@@ -1621,71 +1626,59 @@ export function ReviewerWorkspace() {
         })
     : filteredHistory;
 
-  /** One row of the Review Queue table (plus its expandable detail row) —
-   * shared by the Dashboard preview and the full Tasks view. */
+  /** One row of the Review Queue table — shared by the Dashboard preview
+   * and the full My Assignments view. */
   function renderAssignmentRow(a: Assignment) {
     return (
-      <Fragment key={a.id}>
-        <tr>
-          <td data-label="Manuscript">
-            <button
-              type="button"
-              className="jida-btn-secondary"
-              style={{ padding: 0, border: "none", background: "none", cursor: "pointer", textAlign: "left" }}
-              onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-            >
-              <strong><HighlightMatch text={a.manuscriptTitle ?? "Untitled manuscript"} query={query} /></strong>
-            </button>
-          </td>
-          <td data-label="Submitted">{a.submittedAt?.slice(0, 10) ?? "—"}</td>
-          <td data-label="Deadline">{a.deadline?.slice(0, 10)}</td>
-          <td data-label="Progress"><span className={badgeClass(a.progress)}>{statusLabel(a.progress)}</span></td>
-          <td data-label="Recommendation">
-            <span className={badgeClass(a.recommendation ?? "pending")}>
-              {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
-            </span>
-          </td>
-          <td data-label="File">
-            {/* FR-R3 — download assigned manuscript */}
-            <button
-              type="button"
-              className="jida-badge info"
-              style={{ cursor: "pointer", border: "none" }}
-              onClick={() =>
-                downloadFile(
-                  `/api/reviewer/assignments/${a.id}/download`,
-                  `${a.manuscriptTitle ?? "manuscript"}.pdf`,
-                ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
-              }
-            >
-              Download
-            </button>
-          </td>
-          <td data-label="Actions">
-            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
-              {a.response === "DECLINED" ? (
-                <span className="jida-badge danger">Declined</span>
-              ) : (a.response ?? "PENDING") === "PENDING" ? (
-                <span className="jida-badge warning">Awaiting your response</span>
-              ) : (
-                <>
-                  <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("review", a.id)}>Review</button>
-                  <button type="button" className="jida-badge" style={{ cursor: "pointer", border: "none" }} onClick={() => openPanel("progress", a.id)}>Progress</button>
-                </>
-              )}
-              <ReminderButton manuscriptId={a.manuscriptId} />
-            </div>
-          </td>
-        </tr>
-        {expandedId === a.id && (
-          <tr>
-            <td colSpan={7} style={{ background: "var(--jida-surface-alt, rgba(0,0,0,0.03))" }}>
-              <p style={{ margin: "0.5rem 0" }}><strong>Abstract:</strong> {a.abstract || "—"}</p>
-              <p style={{ margin: "0.5rem 0" }}><strong>Keywords:</strong> {a.keywords?.length ? a.keywords.join(", ") : "—"}</p>
-            </td>
-          </tr>
-        )}
-      </Fragment>
+      <tr key={a.id}>
+        <td data-label="Manuscript">
+          {/* Title only — the abstract and keywords belong to the review form,
+              not to a queue row that has to stay inside the card's width. */}
+          <strong className="jida-queue-title">
+            <HighlightMatch text={a.manuscriptTitle ?? "Untitled manuscript"} query={query} />
+          </strong>
+        </td>
+        <td data-label="Submitted">{a.submittedAt?.slice(0, 10) ?? "—"}</td>
+        <td data-label="Deadline">{a.deadline?.slice(0, 10) ?? "—"}</td>
+        <td data-label="Progress"><span className={badgeClass(a.progress)}>{statusLabel(a.progress)}</span></td>
+        <td data-label="Recommendation">
+          <span className={badgeClass(a.recommendation ?? "pending")}>
+            {a.recommendation ? statusLabel(a.recommendation) : "Pending"}
+          </span>
+        </td>
+        <td data-label="File">
+          {/* FR-R3 — download assigned manuscript */}
+          <button
+            type="button"
+            className="jida-icon-btn"
+            title="Download manuscript"
+            aria-label="Download manuscript"
+            onClick={() =>
+              downloadFile(
+                `/api/reviewer/assignments/${a.id}/download`,
+                `${a.manuscriptTitle ?? "manuscript"}.pdf`,
+              ).catch((e) => alert(e instanceof Error ? e.message : "Download failed"))
+            }
+          >
+            <Download size={14} />
+          </button>
+        </td>
+        <td data-label="Actions">
+          <div className="jida-queue-actions">
+            {a.response === "DECLINED" ? (
+              <span className="jida-badge danger">Declined</span>
+            ) : (a.response ?? "PENDING") === "PENDING" ? (
+              <span className="jida-badge warning">Awaiting response</span>
+            ) : (
+              <>
+                <button type="button" className="jida-queue-btn" onClick={() => openPanel("review", a.id)}>Review</button>
+                <button type="button" className="jida-queue-btn" onClick={() => openPanel("progress", a.id)}>Progress</button>
+              </>
+            )}
+            <ReminderButton manuscriptId={a.manuscriptId} />
+          </div>
+        </td>
+      </tr>
     );
   }
 
@@ -1789,6 +1782,192 @@ export function ReviewerWorkspace() {
         </div>
       )}
 
+      <div className="jida-grid-two">
+      <section className="jida-card">
+        <div className="jida-section-heading">
+          <div>
+            <p className="jida-section-kicker">Assignments</p>
+            <h2>Review Queue</h2>
+            <p className="jida-section-note">Most recently submitted manuscripts first.</p>
+          </div>
+          <span className="jida-badge">{assignments.length} manuscripts</span>
+        </div>
+        <div className="jida-table-wrap">
+          <table className="jida-table jida-queue-table jida-queue-preview">
+            <thead>
+              <tr>
+                <th>Manuscript</th>
+                <th>Submitted</th>
+                <th>Deadline</th>
+                <th>Progress</th>
+                <th>Recommendation</th>
+                <th>File</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.slice(0, 2).map(renderAssignmentRow)}
+              {assignments.length === 0 && !loading && (
+                <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {assignments.length > 2 && (
+          <div className="jida-preview-footer">
+            <button type="button" onClick={() => setActiveView("tasks")}>
+              See all {assignments.length} assignments →
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="jida-card">
+        <div className="jida-section-heading">
+          <div>
+            <p className="jida-section-kicker">Activity</p>
+            <h2>Review Activity</h2>
+          </div>
+        </div>
+        <ActivityTimeline items={reviewerActivity} emptyLabel="No activity yet." />
+      </section>
+      </div>
+      </>
+      )}
+
+      {activeView === "tasks" && (
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div>
+              <p className="jida-section-kicker">Assignments</p>
+              <h2>Review Queue</h2>
+              <p className="jida-section-note">Most recently submitted manuscripts first.</p>
+            </div>
+            <span className="jida-badge">{filteredAssignments.length} manuscripts</span>
+          </div>
+
+          <div className="jida-toolbar">
+            <input
+              placeholder="Search by manuscript title…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select value={progressFilter} onChange={(e) => setProgressFilter(e.target.value)}>
+              <option value="">All statuses</option>
+              {REVIEWER_PROGRESS_ORDER.map((p) => (
+                <option key={p} value={p}>{statusLabel(p)}</option>
+              ))}
+            </select>
+            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}>
+              <option value="">Sort by title</option>
+              <option value="az">Title A → Z</option>
+              <option value="za">Title Z → A</option>
+            </select>
+          </div>
+
+          {filteredAssignments.length === 0 && !loading ? (
+            <p style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</p>
+          ) : (
+            groupBySubmissionPeriod(filteredAssignments).map(([period, group]) => (
+              <div key={period || "none"} className="jida-period-group">
+                <p className="jida-period-group-label">
+                  {period ? `Submission period ending ${period.slice(0, 10)}` : "No submission period recorded"}
+                </p>
+                <div className="jida-table-wrap">
+                  <table className="jida-table jida-queue-table">
+                    <thead>
+                      <tr>
+                        <th>Manuscript</th>
+                        <th>Submitted</th>
+                        <th>Deadline</th>
+                        <th>Progress</th>
+                        <th>Recommendation</th>
+                        <th>File</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>{group.map(renderAssignmentRow)}</tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+      )}
+
+      {activeView === "history" && (
+        <section className="jida-card">
+          <div className="jida-section-heading">
+            <div><p className="jida-section-kicker">History</p><h2>Past Reviews</h2></div>
+            <span className="jida-badge">{sortedHistory.length}</span>
+          </div>
+
+          <div className="jida-toolbar">
+            <input
+              placeholder="Search by manuscript title…"
+              value={historyQuery}
+              onChange={(e) => setHistoryQuery(e.target.value)}
+            />
+            {/* The four verdicts the evaluation form offers, so a reviewer can
+                pull up "everything I rejected" without reading each card. */}
+            <select
+              value={historyRecFilter}
+              onChange={(e) => setHistoryRecFilter(e.target.value as typeof historyRecFilter)}
+            >
+              <option value="">All recommendations</option>
+              {(Object.keys(RECOMMENDATION_LABELS) as ReviewRecommendation[]).map((key) => (
+                <option key={key} value={key}>{RECOMMENDATION_LABELS[key]}</option>
+              ))}
+            </select>
+            <select value={historySortOrder} onChange={(e) => setHistorySortOrder(e.target.value as typeof historySortOrder)}>
+              <option value="">Sort by title</option>
+              <option value="az">Title A → Z</option>
+              <option value="za">Title Z → A</option>
+            </select>
+          </div>
+
+          {sortedHistory.length === 0 ? (
+            <p className="jida-article-empty-note">
+              {history.length === 0
+                ? "No completed reviews yet."
+                : "No reviews match those filters."}
+            </p>
+          ) : (
+            // Grouped by submission period, the same way the live queue is —
+            // a reviewer thinks in terms of the round a manuscript came in on.
+            groupBySubmissionPeriod(sortedHistory).map(([period, group]) => (
+              <div key={period || "none"} className="jida-period-group">
+                <p className="jida-period-group-label">
+                  {period ? `Submission period ending ${period.slice(0, 10)}` : "No submission period recorded"}
+                </p>
+                <div className="jida-track-list">
+                  {group.map((h) => (
+                    <article key={h.id} className="jida-track-card">
+                      <div className="jida-track-main">
+                        <div className="jida-track-head">
+                          <h3><HighlightMatch text={h.manuscriptTitle ?? "Untitled manuscript"} query={historyQuery} /></h3>
+                          {h.review && (
+                            <span className="jida-track-date">{formatDateTime(h.review.createdAt)}</span>
+                          )}
+                        </div>
+                        {h.review ? (
+                          <ReviewFormSummary review={h.review} />
+                        ) : (
+                          <p className="jida-track-muted">No form on file for this review.</p>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+      )}
+
+      {/* Rendered outside the view branches: the reviewer opens these from the
+          queue on the dashboard *and* from My Assignments, and a modal that
+          only exists on one of those pages silently swallows the click. */}
       {activePanel === "review" && (
         <ActionModal
           title="Confidential Blind Review"
@@ -1919,165 +2098,6 @@ export function ReviewerWorkspace() {
         </ActionModal>
       )}
 
-      <div className="jida-grid-two">
-      <section className="jida-card">
-        <div className="jida-section-heading">
-          <div>
-            <p className="jida-section-kicker">Assignments</p>
-            <h2>Review Queue</h2>
-            <p className="jida-section-note">Most recently submitted manuscripts first.</p>
-          </div>
-          <span className="jida-badge">{assignments.length} manuscripts</span>
-        </div>
-        <div className="jida-table-wrap">
-          <table className="jida-table">
-            <thead>
-              <tr>
-                <th>Manuscript</th>
-                <th>Submitted</th>
-                <th>Deadline</th>
-                <th>Progress</th>
-                <th>Recommendation</th>
-                <th>File</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.slice(0, 2).map(renderAssignmentRow)}
-              {assignments.length === 0 && !loading && (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {assignments.length > 2 && (
-          <div className="jida-preview-footer">
-            <button type="button" onClick={() => setActiveView("tasks")}>
-              See all {assignments.length} assignments →
-            </button>
-          </div>
-        )}
-      </section>
-
-      <section className="jida-card">
-        <div className="jida-section-heading">
-          <div>
-            <p className="jida-section-kicker">Activity</p>
-            <h2>Review Activity</h2>
-          </div>
-        </div>
-        <ActivityTimeline items={reviewerActivity} emptyLabel="No activity yet." />
-      </section>
-      </div>
-      </>
-      )}
-
-      {activeView === "tasks" && (
-        <section className="jida-card">
-          <div className="jida-section-heading">
-            <div>
-              <p className="jida-section-kicker">Assignments</p>
-              <h2>Review Queue</h2>
-              <p className="jida-section-note">Most recently submitted manuscripts first.</p>
-            </div>
-            <span className="jida-badge">{filteredAssignments.length} manuscripts</span>
-          </div>
-
-          <div className="jida-toolbar">
-            <input
-              placeholder="Search by manuscript title…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <select value={progressFilter} onChange={(e) => setProgressFilter(e.target.value)}>
-              <option value="">All statuses</option>
-              {REVIEWER_PROGRESS_ORDER.map((p) => (
-                <option key={p} value={p}>{statusLabel(p)}</option>
-              ))}
-            </select>
-            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}>
-              <option value="">Sort by title</option>
-              <option value="az">Title A → Z</option>
-              <option value="za">Title Z → A</option>
-            </select>
-          </div>
-
-          {filteredAssignments.length === 0 && !loading ? (
-            <p style={{ textAlign: "center", padding: "1rem" }}>No assignments found.</p>
-          ) : (
-            groupBySubmissionPeriod(filteredAssignments).map(([period, group]) => (
-              <div key={period || "none"} className="jida-period-group">
-                <p className="jida-period-group-label">
-                  {period ? `Submission period ending ${period.slice(0, 10)}` : "No submission period recorded"}
-                </p>
-                <div className="jida-table-wrap">
-                  <table className="jida-table">
-                    <thead>
-                      <tr>
-                        <th>Manuscript</th>
-                        <th>Submitted</th>
-                        <th>Deadline</th>
-                        <th>Progress</th>
-                        <th>Recommendation</th>
-                        <th>File</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>{group.map(renderAssignmentRow)}</tbody>
-                  </table>
-                </div>
-              </div>
-            ))
-          )}
-        </section>
-      )}
-
-      {activeView === "history" && (
-        <section className="jida-card">
-          <div className="jida-section-heading">
-            <div><p className="jida-section-kicker">History</p><h2>Past Reviews</h2></div>
-            <span className="jida-badge">{sortedHistory.length}</span>
-          </div>
-
-          <div className="jida-toolbar">
-            <input
-              placeholder="Search by manuscript title…"
-              value={historyQuery}
-              onChange={(e) => setHistoryQuery(e.target.value)}
-            />
-            <select value={historySortOrder} onChange={(e) => setHistorySortOrder(e.target.value as typeof historySortOrder)}>
-              <option value="">Sort by title</option>
-              <option value="az">Title A → Z</option>
-              <option value="za">Title Z → A</option>
-            </select>
-          </div>
-
-          {sortedHistory.length === 0 ? (
-            <p className="jida-article-empty-note">No completed reviews yet.</p>
-          ) : (
-            <div className="jida-track-list">
-              {sortedHistory.map((h) => (
-                <article key={h.id} className="jida-track-card">
-                  <div className="jida-track-main">
-                    <div className="jida-track-head">
-                      <h3><HighlightMatch text={h.manuscriptTitle ?? "Untitled manuscript"} query={historyQuery} /></h3>
-                      {h.review && (
-                        <span className="jida-track-date">{formatDateTime(h.review.createdAt)}</span>
-                      )}
-                    </div>
-                    {h.review ? (
-                      <ReviewFormSummary review={h.review} />
-                    ) : (
-                      <p className="jida-track-muted">No form on file for this review.</p>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
     </section>
       </div>
     </div>
@@ -2085,6 +2105,13 @@ export function ReviewerWorkspace() {
 }
 
 // ─── EditorWorkspace ───────────────────────────────────────────────────────
+
+/** Every state a reviewer invitation can be in — drives the Sent invitations filter. */
+const INVITATION_STATUSES: InvitationStatus[] = ["PENDING", "ACCEPTED", "DECLINED", "EXPIRED"];
+
+/** Dropdown value standing in for "no submission period recorded" — an empty
+ * string already means "no filter". */
+const NO_PERIOD = "__none";
 
 /** Sort options over the Google Scholar indexing table. */
 const INDEX_FILTERS = [
@@ -2179,10 +2206,13 @@ export function EditorWorkspace() {
   const [invitations, setInvitations] = useState<ReviewerInvitation[]>([]);
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
   const [inviteSending, setInviteSending] = useState(false);
+  const [inviteStatusFilter, setInviteStatusFilter] = useState<"" | InvitationStatus>("");
   const [prSearch, setPrSearch] = useState("");
   const [prProgressFilter, setPrProgressFilter] = useState("");
   const [prStatusFilter, setPrStatusFilter] = useState("");
   const [showPublishForm, setShowPublishForm] = useState(false);
+  /** "" = every period, NO_PERIOD = the manuscripts with none recorded. */
+  const [productionPeriodFilter, setProductionPeriodFilter] = useState("");
   // Final-screening modal — track the picked manuscript so its reviewer
   // recommendations can be shown, and the chosen outcome (button grid).
   const [finalPickId, setFinalPickId] = useState("");
@@ -2236,6 +2266,10 @@ export function EditorWorkspace() {
   useEffect(() => {
     if (activeView === "peer-review") fetchInvitations();
   }, [activeView]);
+
+  const filteredInvitations = inviteStatusFilter
+    ? invitations.filter((inv) => inv.status === inviteStatusFilter)
+    : invitations;
 
   async function handleSendInvitation(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -2595,6 +2629,20 @@ export function EditorWorkspace() {
     published.map((a) => a.manuscriptId).filter((id): id is string => Boolean(id)),
   );
   const awaitingProduction = acceptedQueue.filter((s) => !publishedManuscriptIds.has(s.id));
+
+  // Every row here is ACCEPTED — that is what puts it in this queue — so the
+  // useful way to narrow it is by the submission round the manuscript came in
+  // on, which is how the rest of the system groups work. Options come from the
+  // queue itself, so a period only appears while something is still waiting.
+  const productionPeriods = [...new Set(awaitingProduction.map((s) => s.submissionDeadline ?? ""))]
+    .sort((a, b) => (a === "" ? 1 : b === "" ? -1 : b.localeCompare(a)));
+  const filteredProduction = productionPeriodFilter
+    ? awaitingProduction.filter(
+        (s) =>
+          (s.submissionDeadline ?? "") ===
+          (productionPeriodFilter === NO_PERIOD ? "" : productionPeriodFilter),
+      )
+    : awaitingProduction;
 
   /**
    * The issues that actually have published articles, newest first, with a
@@ -3102,10 +3150,29 @@ export function EditorWorkspace() {
         <section className="jida-card">
           <div className="jida-section-heading">
             <div><p className="jida-section-kicker">Recruitment</p><h2>Sent invitations</h2></div>
-            <span className="jida-badge">{invitations.length}</span>
+            <span className="jida-badge">{filteredInvitations.length}</span>
           </div>
-          {invitations.length === 0 ? (
-            <p className="jida-article-empty-note">No reviewer invitations sent yet.</p>
+
+          {invitations.length > 0 && (
+            <div className="jida-toolbar">
+              <select
+                value={inviteStatusFilter}
+                onChange={(e) => setInviteStatusFilter(e.target.value as typeof inviteStatusFilter)}
+              >
+                <option value="">All statuses</option>
+                {INVITATION_STATUSES.map((st) => (
+                  <option key={st} value={st}>{statusLabel(st)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {filteredInvitations.length === 0 ? (
+            <p className="jida-article-empty-note">
+              {invitations.length === 0
+                ? "No reviewer invitations sent yet."
+                : "No invitations with that status."}
+            </p>
           ) : (
             <div className="jida-table-wrap">
               <table className="jida-table">
@@ -3113,7 +3180,7 @@ export function EditorWorkspace() {
                   <tr><th>Email</th><th>Sent</th><th>Status</th><th>Note</th></tr>
                 </thead>
                 <tbody>
-                  {invitations.map((inv) => (
+                  {filteredInvitations.map((inv) => (
                     <tr key={inv.id}>
                       <td data-label="Email">{inv.email}</td>
                       <td data-label="Sent">{inv.createdAt.slice(0, 10)}</td>
@@ -3604,15 +3671,32 @@ export function EditorWorkspace() {
         <section className="jida-card">
             <div className="jida-section-heading">
               <div><p className="jida-section-kicker">Production</p><h2>Awaiting Publication</h2></div>
-              <span className="jida-badge">{awaitingProduction.length} ready</span>
+              <span className="jida-badge">{filteredProduction.length} ready</span>
             </div>
+
+            {productionPeriods.length > 1 && (
+              <div className="jida-toolbar">
+                <select
+                  value={productionPeriodFilter}
+                  onChange={(e) => setProductionPeriodFilter(e.target.value)}
+                >
+                  <option value="">All submission periods</option>
+                  {productionPeriods.map((period) => (
+                    <option key={period || NO_PERIOD} value={period || NO_PERIOD}>
+                      {period ? `Period ending ${period.slice(0, 10)}` : "No submission period recorded"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="jida-table-wrap">
               <table className="jida-table">
                 <thead>
                   <tr><th>Manuscript</th><th>Status</th><th /></tr>
                 </thead>
                 <tbody>
-                  {awaitingProduction.map((s) => (
+                  {filteredProduction.map((s) => (
                     <tr key={s.id}>
                       <td className="jida-queue-title">{s.title}</td>
                       <td><span className="jida-badge success">Accepted</span></td>
@@ -3627,8 +3711,14 @@ export function EditorWorkspace() {
                       </td>
                     </tr>
                   ))}
-                  {awaitingProduction.length === 0 && (
-                    <tr><td colSpan={3} className="jida-queue-empty">No accepted manuscripts awaiting publication.</td></tr>
+                  {filteredProduction.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="jida-queue-empty">
+                        {awaitingProduction.length === 0
+                          ? "No accepted manuscripts awaiting publication."
+                          : "Nothing awaiting publication from that submission period."}
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
