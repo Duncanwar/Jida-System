@@ -66,7 +66,7 @@ export default function Home() {
   const latestArticles = articles
     .slice()
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
-    .slice(0, 5);
+    .slice(0, 3);
 
   // Issues already arrive newest-first from the API — the three most recent
   // are the "news" of what's just been published.
@@ -82,56 +82,35 @@ export default function Home() {
             Journal of Inter-Discourse Academia
           </p>
           <h2>
-            Advancing <span>scholarship</span> across disciplines
+            Advancing <span>Scholarship</span>
           </h2>
           <p>
-            A peer-reviewed digital platform for manuscript submission,
-            structured editorial review, revision tracking, and publication —
-            built for authors, reviewers, and editors.
+            A premier peer-reviewed platform for impactful research and academic
+            discourse across diverse disciplines.
           </p>
+          <div className="jida-hero-actions">
+            <Link href="/signup" className="jida-btn-primary">
+              Submit Manuscript
+            </Link>
+            <Link href="/archive" className="jida-btn-secondary">
+              Browse Archive
+            </Link>
+          </div>
         </div>
-
-        <div className="jida-home-hero-stats" aria-label="Platform statistics">
-          <article>
-            <strong>{volumeCount}</strong>
-            <span className="jida-stat-label">VOLUMES</span>
-          </article>
-          <article>
-            <strong>{issueCount}</strong>
-            <span className="jida-stat-label">ISSUES</span>
-          </article>
-        </div>
-      </section>
-
-      <section className="jida-welcome" aria-labelledby="welcome-title">
-        <p className="jida-section-kicker">Welcome</p>
-        <h2 id="welcome-title">Welcome to The Journal of Inter-Discourse Academia</h2>
-        <Link href="/about#about-jida" className="jida-advanced-toggle">
-          Learn more about JIDA
-        </Link>
       </section>
 
       <section className="jida-home-search" aria-labelledby="home-search-title">
-        <div className="jida-home-search-copy">
-          <p className="jida-section-kicker">Research discovery</p>
-          <h2 id="home-search-title">Find research that moves the conversation forward</h2>
-          <p>Search published JIDA articles by title, author, or keyword.</p>
-        </div>
         <form className="jida-home-search-form" onSubmit={handleSearch}>
-          <label htmlFor="home-article-search">Search the JIDA archive</label>
           <div className="jida-home-search-row">
             <input
               id="home-article-search"
               type="search"
-              placeholder="Search articles, authors, or topics"
+              placeholder="Search by Title, Author, DOI, or Keywords..."
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <button type="submit">Search</button>
           </div>
-          <Link href="/archive/advanced-search" className="jida-advanced-toggle">
-            Advanced search
-          </Link>
         </form>
       </section>
 
@@ -164,38 +143,74 @@ export default function Home() {
               {latestArticles.length === 0 ? (
                 <p className="jida-home-state">New articles will appear here.</p>
               ) : (
-                <ul>
+                <div className="jida-article-cards">
                   {latestArticles.map((article) => (
-                    <li key={article.id}>
-                      <Link href={`/archive/${article.slug}`}>{article.manuscript.title}</Link>
+                    <div key={article.id} className="jida-article-card">
+                      <div className="jida-article-card-header">
+                        <span className="jida-article-category">Original Research</span>
+                        <time dateTime={article.publishedAt}>
+                          {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
+                        </time>
+                      </div>
+                      <Link href={`/archive/${article.slug}`} className="jida-article-card-title">
+                        {article.manuscript.title}
+                      </Link>
+                      <p className="jida-article-card-authors">
+                        {article.manuscript.author.name}
+                        {article.manuscript.coAuthors?.length > 0 && 
+                          `, ${article.manuscript.coAuthors.map(ca => ca.name).join(", ")}`}
+                      </p>
                       <p className="jida-latest-meta">
                         {article.issue
-                          ? `Volume ${article.issue.volume}, Issue ${article.issue.issueNumber}, ${article.issue.year}`
+                          ? `JIDA Vol. ${article.issue.volume}, No. ${article.issue.issueNumber} (${article.issue.year})`
                           : "JIDA publication"}
                       </p>
-                      <time dateTime={article.publishedAt}>
-                        Published: {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(article.publishedAt))}
-                      </time>
-                    </li>
+                      <div className="jida-article-card-footer">
+                        <span className="jida-doi">DOI: 10.58221/jida.v{article.issue?.volume || 7}.{article.id.slice(0, 4)}</span>
+                        <div className="jida-article-actions">
+                          <button className="jida-icon-btn" title="Download PDF">
+                            <Download size={16} />
+                            <span>PDF</span>
+                          </button>
+                          <button className="jida-icon-btn" title="Cite this article">
+                            <Quote size={16} />
+                            <span>Cite</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
 
             <div className="jida-recent-publications">
-              <h3>Recent Publications</h3>
-              {recentIssues.length === 0 ? (
-                <p className="jida-home-state">New issues will appear here.</p>
-              ) : (
-                <ul>
-                  {recentIssues.map((issue) => (
-                    <li key={issue.id}>
-                      <Link href="/archive">{formatIssueTitle(issue)}</Link>
-                      <p className="jida-latest-meta">{issueArticleCount(issue)} articles</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="jida-current-issue-callout">
+                <span className="jida-issue-label">Current Issue</span>
+                {recentIssues[0] && (
+                  <div className="jida-current-issue-details">
+                    <h4>{formatIssueTitle(recentIssues[0])}</h4>
+                    <p>{issueArticleCount(recentIssues[0])} Published Articles</p>
+                    <Link href="/archive" className="jida-issue-link">View Full Issue</Link>
+                  </div>
+                )}
+              </div>
+              
+              <div className="jida-past-issues-list">
+                <h3>Past Issues</h3>
+                {recentIssues.length <= 1 ? (
+                  <p className="jida-home-state">Past issues will appear here.</p>
+                ) : (
+                  <ul>
+                    {recentIssues.slice(1).map((issue) => (
+                      <li key={issue.id}>
+                        <Link href="/archive">{formatIssueTitle(issue)}</Link>
+                        <p className="jida-latest-meta">{issueArticleCount(issue)} articles</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -244,102 +259,31 @@ export default function Home() {
 
       <section className="jida-contact">
         <div className="jida-contact-header">
-          <p className="jida-contact-kicker">Contact</p>
           <h2>Contact Us</h2>
         </div>
 
         <div className="jida-contact-body">
           <div className="jida-contact-info-card">
             <div className="jida-contact-item">
-              <span className="jida-contact-icon">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-              </span>
               <div>
-                <strong>Address</strong>
-                <p>Kigali, Rwanda</p>
+                <strong>Chief Editor: Prof. Jacques Kayigema</strong>
+                <a href="mailto:jacques.kayigema@auca.ac.rw" className="jida-contact-link">jacques.kayigema@auca.ac.rw</a>
               </div>
             </div>
 
             <div className="jida-contact-item">
-              <span className="jida-contact-icon">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.7 3.41 2 2 0 0 1 3.68 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6.29 6.29l1.16-1.16a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-              </span>
               <div>
-                <strong>Call Us</strong>
-                <p>
-                  <b>Chief Editor:</b> +250 788 866 769
-                </p>
-                <p>
-                  <b>Associate Editor:</b> +250 788 572 042
-                </p>
+                <strong>Associate Editor: Mr. Enock Nibishaka</strong>
+                <a href="mailto:enock.nibishaka@auca.ac.rw" className="jida-contact-link">enock.nibishaka@auca.ac.rw</a>
               </div>
             </div>
-
+            
             <div className="jida-contact-item">
-              <span className="jida-contact-icon">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-              </span>
               <div>
-                <strong>Email Us</strong>
-                <p>
-                  <b>Chief Editor:</b> jacques.kayigema@auca.ac.rw
-                </p>
-                <p>
-                  <b>Associate Editor:</b> enock.nibishaka@auca.ac.rw
-                </p>
+                <strong>Location</strong>
+                <p>AUCA Gishushu, Kigali, Rwanda</p>
               </div>
             </div>
-          </div>
-
-          <div className="jida-contact-map">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1726.356863669244!2d30.10419664232857!3d-1.9554253870061855!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x19dca6f907feabf7%3A0x207b54b64c8ffb34!2sAdventist%20University%20of%20Central%20Africa%2C%20Science%20and%20Technology%20Centre!5e1!3m2!1sen!2srw!4v1782830850584!5m2!1sen!2srw"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-              title="JIDA Location"
-            />
           </div>
         </div>
       </section>

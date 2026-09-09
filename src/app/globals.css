@@ -6,14 +6,19 @@
    back only the new components so a mockup-driven restyle doesn't require
    re-touching thousands of pre-existing declarations. */
 :root {
-  --jida-navy: #10223d;
-  --jida-gold: #d79b2b;
-  --jida-blue: #2e5fa4;
-  --jida-blue-dark: #1d4d91;
-  --jida-muted: #5a7194;
-  --jida-line: #e7edf6;
-  --jida-card-radius: 16px;
-  --jida-card-shadow: 0 1px 2px rgba(16, 34, 61, 0.04), 0 10px 24px -12px rgba(16, 34, 61, 0.12);
+  --jida-navy: #0f172a;
+  --jida-gold: #c5a059;
+  --jida-gold-light: #dfc18d;
+  --jida-blue: #2563eb;
+  --jida-blue-dark: #1e40af;
+  --jida-muted: #64748b;
+  --jida-slate-50: #f8fafc;
+  --jida-slate-100: #f1f5f9;
+  --jida-slate-200: #e2e8f0;
+  --jida-line: #e2e8f0;
+  --jida-card-radius: 12px;
+  --jida-card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --jida-card-shadow-hover: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 *{
@@ -372,14 +377,160 @@ button:hover{
 .jida-header {
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: #10223d;
-  box-shadow: 0 2px 10px rgba(16, 34, 61, 0.28);
-  padding: 0.8rem 1.5rem;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 4rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+}
+
+.jida-mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: 0;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.5rem;
+  z-index: 101;
+}
+
+.jida-mobile-only-label {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .jida-header {
+    padding: 1rem 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .jida-header {
+    padding: 0.75rem 1.25rem;
+  }
+  
+  .jida-header-name {
+    font-size: 0.95rem;
+    max-width: 12rem;
+  }
+  
+  .jida-mobile-menu-toggle {
+    display: block;
+  }
+  
+  .jida-header-nav.jida-header-nav-public {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--jida-navy);
+    flex-direction: column;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 100;
+  }
+  
+  .jida-header-nav.jida-header-nav-public.open {
+    transform: translateX(0);
+  }
+  
+  .jida-about-trigger,
+  .jida-header-nav.jida-header-nav-public > a {
+    font-size: 1.25rem !important;
+  }
+  
+  .jida-about-dropdown {
+    position: static;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
+    margin-top: 0.5rem;
+    min-width: 100%;
+  }
+  
+  .jida-about-dropdown a {
+    color: #e2e8f0;
+    text-align: center;
+  }
+
+  .jida-mobile-auth-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+  }
+  
+  .jida-mobile-only-label {
+    display: inline;
+    margin-left: 0.5rem;
+  }
+  
+  .jida-settings-btn {
+    display: flex;
+    align-items: center;
+    color: #e2e8f0;
+    background: transparent;
+    border: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+}
+
+.jida-header-logo {
+  height: 44px;
+  width: 44px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  padding: 2px;
+  border: 2px solid var(--jida-gold);
+}
+
+.jida-header-name {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.jida-header-nav.jida-header-nav-public {
+  gap: 3rem;
+  align-items: center;
+}
+
+.jida-header-nav.jida-header-nav-public > a,
+.jida-about-trigger {
+  color: #e2e8f0 !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s !important;
+}
+
+.jida-header-nav.jida-header-nav-public > a:hover,
+.jida-about-trigger:hover {
+  color: var(--jida-gold) !important;
+}
+
+.jida-header-signin {
+  background: var(--jida-gold) !important;
+  color: var(--jida-navy) !important;
+  padding: 0.6rem 2rem !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(197, 160, 89, 0.3);
+}
+
+.jida-header-signin:hover {
+  background: var(--jida-gold-light) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(197, 160, 89, 0.4);
 }
 
 .jida-header-kicker,
@@ -451,9 +602,9 @@ button:hover{
 }
 
 .jida-home-hero {
-  min-height: 88vh;
-  background:
-    linear-gradient(rgba(16, 34, 61, 0.68), rgba(16, 34, 61, 0.72)),
+  min-height: 75vh;
+  background: 
+    linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.8)),
     url("/images/gishushu_campus.jpg") center/cover no-repeat;
   color: #fff;
   display: flex;
@@ -461,121 +612,157 @@ button:hover{
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 5rem 2rem 4rem;
-  gap: 0;
+  padding: 8rem 2rem 8rem;
+  position: relative;
+  overflow: hidden;
 }
 
-.jida-home-hero-copy {
-  max-width: 820px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.jida-home-pill {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(215, 155, 43, 0.75);
-  border-radius: 999px;
-  color: #10223d;
-  background: #d79b2b;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.jida-home-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
 }
 
 .jida-home-hero h2 {
-  margin-top: 1rem;
-  max-width: none;
-  color: #fff;
-  font-size: clamp(2.4rem, 6vw, 4.5rem);
-  line-height: 1.05;
+  margin-top: 0;
+  font-family: serif;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 .jida-home-hero h2 span {
-  color: #f4c76f;
+  color: var(--jida-gold);
+  font-style: italic;
 }
 
 .jida-home-hero p {
-  margin-top: 1.1rem;
-  max-width: 62ch;
-  color: #c8d6ec;
-  line-height: 1.7;
-  text-align: center;
+  margin-top: 2rem;
+  font-size: 1.25rem;
+  max-width: 65ch;
+  color: #cbd5e1;
+  line-height: 1.6;
+  font-weight: 300;
 }
 
-.jida-home-actions {
-  margin-top: 2.25rem;
+.jida-home-search {
+  padding: 0;
+  margin-top: -3rem;
+  z-index: 10;
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.jida-home-search-form {
+  background: #fff;
+  padding: 0.4rem;
+  border-radius: 100px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.jida-home-search-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
+  align-items: center;
 }
 
-.jida-home-actions a {
-  min-width: 150px;
-  border: 2px solid rgba(255, 255, 255, 0.65);
-  border-radius: 999px;
-  background: transparent;
-  color: #fff;
-  padding: 0.8rem 2rem;
-  text-align: center;
-  text-decoration: none;
-  font-weight: 700;
+.jida-home-search-row input {
+  flex: 1;
+  border: none;
+  padding: 0.6rem 1.25rem;
   font-size: 0.95rem;
-  letter-spacing: 0.02em;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  outline: none;
+  background: transparent;
+  color: var(--jida-navy);
 }
 
-.jida-home-actions a:hover {
-  background: rgba(255, 255, 255, 0.12);
+.jida-home-search-row input::placeholder {
+  color: #94a3b8;
 }
 
-.jida-home-actions a:first-child {
-  background: #d79b2b;
-  border-color: #d79b2b;
-  color: #10223d;
-}
-
-.jida-home-actions a:first-child:hover {
-  background: #e8ab35;
-  border-color: #e8ab35;
-}
-
-.jida-home-hero-stats {
-  margin-top: 4rem;
-  padding-top: 2.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  display: flex;
-  gap: 4rem;
-  width: min(540px, 100%);
-  justify-content: center;
-}
-
-.jida-home-hero-stats article {
-  text-align: center;
-}
-
-.jida-home-hero-stats strong,
-.jida-home-hero-stats span {
-  display: block;
-}
-
-.jida-home-hero-stats strong {
+.jida-home-search-row button {
+  padding: 0.6rem 1.25rem;
+  background: var(--jida-navy);
   color: #fff;
-  font-size: 1.55rem;
-  line-height: 1;
+  border: none;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.jida-home-hero-stats span {
-  margin-top: 0.35rem;
-  color: #a9bcda;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+.jida-home-search-row button:hover {
+  background: var(--jida-gold);
+}
+
+.jida-home-news {
+  padding: 10rem 2rem;
+  background: #fff;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.jida-contact-link {
+  color: var(--jida-gold);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.jida-contact-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .jida-home-hero {
+    min-height: 80vh;
+    padding: 4rem 1.5rem 3rem;
+  }
+}
+
+.jida-home-hero::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to top, var(--jida-slate-50), transparent);
+  pointer-events: none;
+}
+
+.jida-home-hero-copy {
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+}
+
+.jida-home-hero-copy h2 span {
+  background: linear-gradient(to right, var(--jida-gold), var(--jida-gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.jida-home-hero-eyebrow {
+  font-size: 0.9rem;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--jida-gold-light);
+  margin-bottom: 1.5rem;
 }
 
 .jida-home-content {
@@ -763,111 +950,154 @@ button:hover{
 }
 
 .jida-footer {
-  background: #0c1a2e;
-  color: #dbe7f8;
-  padding: 3rem max(2rem, 8vw) 1.5rem;
-  font-size: 0.85rem;
+  background: var(--jida-navy);
+  color: #fff;
+  padding: 8rem 2rem 4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  .jida-footer {
+    padding: 4rem 1.25rem 2.5rem;
+  }
 }
 
 .jida-footer-grid {
+  max-width: 1400px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(200px, 1.3fr) repeat(3, minmax(160px, 1fr));
-  gap: 2rem;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 4rem;
+  margin-bottom: 6rem;
   text-align: left;
 }
 
+@media (max-width: 1024px) {
+  .jida-footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .jida-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin-bottom: 3rem;
+  }
+}
+
 .jida-footer-col h4 {
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--jida-gold);
+  margin-bottom: 2rem;
   text-transform: uppercase;
-  margin-bottom: 0.9rem;
+  letter-spacing: 0.1em;
 }
 
 .jida-footer-brand {
-  display: block;
-  font-size: 1.15rem;
+  font-size: 2rem;
+  font-weight: 800;
   color: #fff;
-  margin-bottom: 0.6rem;
+  margin-bottom: 1.5rem;
+  display: block;
 }
 
 .jida-footer-about p {
-  color: #a9bcda;
-  line-height: 1.6;
-  margin: 0 0 0.75rem;
+  color: #94a3b8;
+  line-height: 1.8;
+  font-size: 1rem;
+  margin: 0 0 1.5rem;
 }
 
 .jida-footer-meta {
-  color: #6b88b6 !important;
-  font-size: 0.78rem !important;
+  font-size: 0.85rem;
+  color: var(--jida-muted) !important;
 }
 
 .jida-footer-col nav {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 1rem;
 }
 
 .jida-footer a {
-  color: #a9bcda;
+  color: #cbd5e1;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: all 0.2s;
+  font-size: 0.95rem;
 }
 
 .jida-footer a:hover {
-  color: #f4c76f;
+  color: var(--jida-gold);
+  transform: translateX(4px);
 }
 
 .jida-footer-list {
-  display: grid;
-  gap: 0.55rem;
-  color: #a9bcda;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 
 .jida-footer-board {
   display: grid;
-  gap: 0.9rem;
+  gap: 1.5rem;
 }
 
 .jida-footer-board li {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .jida-footer-board strong {
+  font-size: 1rem;
+  font-weight: 600;
   color: #fff;
-  font-size: 0.86rem;
 }
 
 .jida-footer-board span {
-  color: #6b88b6;
-  font-size: 0.76rem;
+  font-size: 0.85rem;
+  color: var(--jida-gold);
 }
 
 .jida-footer-board a {
-  font-size: 0.78rem;
+  font-size: 0.85rem;
+  color: #94a3b8;
   word-break: break-all;
 }
 
 .jida-footer-enquiries {
-  margin-top: 1rem;
-  color: #6b88b6;
-  font-size: 0.76rem;
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: var(--jida-muted);
 }
 
 .jida-footer-bottom {
-  margin-top: 2.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #1c2f4a;
-  text-align: center;
+  max-width: 1400px;
+  margin: 2.5rem auto 0;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .jida-footer-bottom {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
 }
 
 .jida-footer-bottom span {
-  color: #6b88b6;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
+  color: var(--jida-muted);
 }
 
 .jida-actions {
@@ -1954,111 +2184,139 @@ button.jida-back-btn:hover {
 /* â”€â”€â”€ Contact section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .jida-contact {
-  background: #f4f7fb;
-  padding: 4rem 2.5rem;
-  border-top: 1px solid #e8eef8;
+  padding: 10rem 2rem;
+  background: #fff;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .jida-contact-header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 5rem;
+  text-align: center;
 }
 
 .jida-contact-kicker {
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
+  font-size: 0.8rem;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #6a81a5;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.6rem;
-}
-
-.jida-contact-kicker::after {
-  content: "";
-  display: block;
-  height: 2px;
-  width: 80px;
-  background: #2e5fa4;
-  border-radius: 2px;
+  letter-spacing: 0.2em;
+  color: var(--jida-gold);
+  margin-bottom: 1.5rem;
 }
 
 .jida-contact-header h2 {
-  font-size: 2rem;
-  font-weight: 900;
-  color: #10223d;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-family: serif;
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  font-weight: 700;
+  color: var(--jida-navy);
 }
 
 .jida-contact-body {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
-  gap: 2rem;
-  align-items: start;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .jida-contact-body {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  
+  .jida-contact-map {
+    height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .jida-contact-header h2 {
+    font-size: 2.2rem;
+  }
+  
+  .jida-contact-info-card {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .jida-contact-item {
+    width: 100%;
+    max-width: 100%;
+    padding: 2rem;
+  }
 }
 
 .jida-contact-info-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 2rem 1.75rem;
-  display: grid;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
   gap: 2rem;
-  box-shadow: 0 2px 10px rgba(16, 34, 61, 0.07);
+  width: 100%;
 }
 
 .jida-contact-item {
   display: flex;
-  align-items: flex-start;
-  gap: 1.1rem;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2.5rem;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  flex: 1;
+  max-width: 350px;
+}
+
+.jida-contact-item:hover {
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+  border-color: var(--jida-gold-light);
+  transform: translateY(-5px);
 }
 
 .jida-contact-icon {
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 60px;
+  height: 60px;
+  background: var(--jida-slate-50);
+  color: var(--jida-gold);
   border-radius: 50%;
-  background: #eef4ff;
-  color: #2e5fa4;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  margin-bottom: 0.5rem;
+  border: 1px solid #f1f5f9;
 }
 
-.jida-contact-item > div > strong {
+.jida-contact-item strong {
   display: block;
-  color: #10223d;
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin-bottom: 0.4rem;
+  color: var(--jida-navy);
+  margin-bottom: 0.5rem;
 }
 
 .jida-contact-item p {
-  color: #506b92;
-  font-size: 0.88rem;
-  line-height: 1.65;
-  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .jida-contact-item p b {
-  color: #10223d;
-  font-weight: 700;
+  color: var(--jida-navy);
 }
 
 .jida-contact-map {
-  border-radius: 14px;
+  height: 500px;
+  border-radius: var(--jida-card-radius);
   overflow: hidden;
-  height: 420px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 10px rgba(16, 34, 61, 0.07);
+  border: 1px solid var(--jida-slate-200);
+  box-shadow: var(--jida-card-shadow);
 }
 
 .jida-contact-map iframe {
   width: 100%;
   height: 100%;
-  display: block;
 }
 
 /* â”€â”€â”€ Hero eyebrow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -3883,108 +4141,222 @@ button.jida-password-toggle:hover {
 /* ── Landing page: search + advanced search ─────────────────────────────── */
 
 .jida-home-search {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  gap: 2.5rem;
+  padding: 6rem 2rem;
+  background: var(--jida-slate-50);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 3rem max(2rem, 8vw);
-  background: #f4f7fb;
-  border-bottom: 1px solid #dce5f0;
+  text-align: center;
 }
 
-.jida-home-search-copy h2,
-.jida-home-section-heading h2 {
-  margin-top: 0.35rem;
-  color: #10223d;
-  font-size: clamp(1.6rem, 3vw, 2.35rem);
-  line-height: 1.15;
+.jida-home-search-copy {
+  max-width: 800px;
+  margin-bottom: 3rem;
 }
 
-/* The "Latest articles and publication news" heading doubles as the link into
-   the archive — it keeps the heading's weight, and only signals on hover. */
-.jida-home-news-title-link {
-  color: inherit;
-  text-decoration: none;
-  transition: color 0.15s ease;
+.jida-section-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--jida-gold);
+  margin-bottom: 1rem;
 }
 
-.jida-home-news-title-link:hover,
-.jida-home-news-title-link:focus-visible {
-  color: #2e5fa4;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.jida-home-search-copy h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--jida-navy);
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
 }
 
-.jida-home-search-copy > p:last-child {
-  margin-top: 0.8rem;
-  color: #5a7194;
-  line-height: 1.6;
+.jida-home-search-copy p {
+  font-size: 1.1rem;
+  color: var(--jida-muted);
 }
 
 .jida-home-search-form {
-  display: grid;
-  gap: 0.55rem;
+  width: 100%;
+  max-width: 700px;
 }
 
-.jida-home-search-form > label,
-.jida-home-advanced label {
-  color: #263d5f;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.jida-home-search-form label {
+  display: none;
 }
 
 .jida-home-search-row {
   display: flex;
-  gap: 0.55rem;
-}
-
-.jida-home-search-row input,
-.jida-home-advanced input {
-  min-height: 44px;
-  width: 100%;
-  border: 1px solid #b9c9df;
-  border-radius: 6px;
   background: #fff;
-  color: #10223d;
-  padding: 0.65rem 0.8rem;
-  outline: none;
+  padding: 0.5rem;
+  border-radius: 999px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+  border: 1px solid var(--jida-slate-200);
+  transition: all 0.3s ease;
 }
 
-.jida-home-search-row input:focus,
-.jida-home-advanced input:focus {
-  border-color: #2e5fa4;
-  box-shadow: 0 0 0 3px rgba(46, 95, 164, 0.12);
+.jida-home-search-row:focus-within {
+  border-color: var(--jida-gold);
+  box-shadow: 0 10px 25px -5px rgba(197, 160, 89, 0.2);
+}
+
+.jida-home-search-row input {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 1.05rem !important;
+  color: var(--jida-navy) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  min-height: auto !important;
 }
 
 .jida-home-search-row button {
-  min-width: 105px;
-  border: 0;
-  border-radius: 6px;
-  background: #2e5fa4;
+  background: var(--jida-navy);
   color: #fff;
-  font-weight: 800;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s;
+  min-width: auto;
 }
 
 .jida-home-search-row button:hover {
-  background: #214a82;
+  background: var(--jida-blue-dark);
 }
 
-.jida-advanced-toggle,
-.jida-filter-clear {
-  justify-self: start;
-  width: auto;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #2e5fa4;
-  cursor: pointer;
-  font-size: 0.82rem;
+.jida-advanced-toggle {
+  display: inline-block;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--jida-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.jida-advanced-toggle:hover {
+  color: var(--jida-navy);
+}
+
+/* ── Latest articles and publication news ──────────────────────────────── */
+
+.jida-home-news {
+  padding: 10rem 2rem;
+  background: #fff;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.jida-home-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 4rem;
+  border-bottom: 1px solid var(--jida-slate-200);
+  padding-bottom: 2rem;
+}
+
+.jida-home-section-heading h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--jida-navy);
+}
+
+.jida-home-section-heading a {
+  color: var(--jida-gold);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.jida-articles-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 4rem;
+}
+
+.jida-latest-articles h3,
+.jida-recent-publications h3 {
+  font-size: 1.5rem;
   font-weight: 700;
-  padding: 0.2rem 0;
+  color: var(--jida-navy);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.jida-latest-articles h3::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 24px;
+  background: var(--jida-gold);
+  border-radius: 2px;
+}
+
+.jida-latest-articles ul,
+.jida-recent-publications ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.jida-latest-articles li {
+  padding: 2rem;
+  background: var(--jida-slate-50);
+  border-radius: var(--jida-card-radius);
+  border: 1px solid var(--jida-slate-200);
+  transition: all 0.3s ease;
+}
+
+.jida-latest-articles li:hover {
+  background: #fff;
+  box-shadow: var(--jida-card-shadow-hover);
+  border-color: var(--jida-gold-light);
+  transform: translateY(-4px);
+}
+
+.jida-latest-articles li a {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--jida-navy);
+  text-decoration: none;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.jida-latest-meta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--jida-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.jida-latest-articles li time {
+  font-size: 0.85rem;
+  color: var(--jida-muted);
+}
+
+.jida-recent-publications li {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--jida-slate-100);
+}
+
+.jida-recent-publications li a {
+  font-weight: 600;
+  color: var(--jida-navy);
+  text-decoration: none;
+  font-size: 1.1rem;
 }
 
 .jida-advanced-toggle:hover,
@@ -4183,92 +4555,100 @@ button.jida-password-toggle:hover {
 /* ── Landing page: newsletter signup ─────────────────────────────────────── */
 
 .jida-newsletter {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  gap: 2.5rem;
-  align-items: center;
-  padding: 3rem max(2rem, 8vw);
-  background: #10223d;
+  padding: 10rem 2rem;
+  background: var(--jida-navy);
   color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.jida-newsletter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle at 2px 2px, rgba(197, 160, 89, 0.05) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+.jida-newsletter-copy {
+  max-width: 700px;
+  margin-bottom: 3.5rem;
+  z-index: 1;
 }
 
 .jida-newsletter-copy h2 {
-  margin-top: 0.35rem;
-  color: #fff;
-  font-size: clamp(1.5rem, 2.7vw, 2.1rem);
+  font-family: serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
   line-height: 1.2;
 }
 
-.jida-newsletter-copy > p:last-child {
-  margin-top: 0.8rem;
-  color: #b7cdf0;
+.jida-newsletter-copy p {
+  font-size: 1.15rem;
+  color: #94a3b8;
   line-height: 1.6;
+  max-width: 60ch;
+  margin: 0 auto;
 }
 
 .jida-newsletter-form {
-  display: grid;
-  gap: 0.55rem;
+  width: 100%;
+  max-width: 550px;
+  z-index: 1;
 }
 
 .jida-newsletter-form label {
-  color: #dbe7f8;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: none;
 }
 
 .jida-newsletter-row {
   display: flex;
-  gap: 0.55rem;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .jida-newsletter-row input {
-  min-height: 44px;
-  width: 100%;
-  border: 1px solid #2a4570;
-  border-radius: 6px;
-  background: #16294a;
-  color: #fff;
-  padding: 0.65rem 0.8rem;
-  outline: none;
-}
-
-.jida-newsletter-row input::placeholder {
-  color: #7d93bc;
-}
-
-.jida-newsletter-row input:focus {
-  border-color: #d79b2b;
-  box-shadow: 0 0 0 3px rgba(215, 155, 43, 0.2);
-}
-
-.jida-newsletter-row input:disabled {
-  opacity: 0.6;
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  padding: 0.75rem 1.5rem !important;
+  color: #fff !important;
+  outline: none !important;
+  font-size: 1rem !important;
 }
 
 .jida-newsletter-row button {
-  min-width: 130px;
-  border: 0;
-  border-radius: 6px;
-  background: #d79b2b;
-  color: #10223d;
-  font-weight: 800;
+  background: var(--jida-gold);
+  color: var(--jida-navy);
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 2rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.jida-newsletter-row button:hover:not(:disabled) {
-  background: #e9ad3c;
-}
-
-.jida-newsletter-row button:disabled {
-  opacity: 0.7;
-  cursor: default;
+.jida-newsletter-row button:hover {
+  background: var(--jida-gold-light);
+  transform: scale(1.02);
 }
 
 .jida-newsletter-msg {
+  margin-top: 1rem;
+  font-size: 0.9rem;
   color: #a8e6c1;
-  font-size: 0.85rem;
 }
 
 .jida-newsletter-msg-error {
@@ -4285,6 +4665,22 @@ button.jida-password-toggle:hover {
 @media (max-width: 640px) {
   .jida-newsletter-row {
     flex-direction: column;
+    border-radius: 16px;
+    background: transparent;
+    padding: 0;
+    border: none;
+    gap: 1rem;
+  }
+  
+  .jida-newsletter-row input {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 999px !important;
+    width: 100%;
+  }
+  
+  .jida-newsletter-row button {
+    width: 100%;
   }
 }
 
@@ -5742,50 +6138,65 @@ button.jida-password-toggle:hover {
 /* ── About page ───────────────────────────────────────────────────────────── */
 
 .jida-about-hero {
-  padding: 3.5rem max(2rem, 8vw) 2.5rem;
-  background: #10223d;
+  padding: 8rem 4rem 4rem;
+  background: var(--jida-navy);
   color: #fff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .jida-about-hero h1 {
-  margin-top: 0.35rem;
-  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  margin-top: 1rem;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
   color: #fff;
 }
 
 .jida-about-hero > p:last-child {
-  margin-top: 0.9rem;
-  max-width: 60ch;
-  color: #b7cdf0;
+  margin-top: 1.5rem;
+  max-width: 70ch;
+  color: #cbd5e1;
+  font-size: 1.25rem;
   line-height: 1.6;
 }
 
 .jida-about-block {
-  padding: 3.5rem max(2rem, 8vw);
+  padding: 6rem 4rem;
   background: #fff;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .jida-about-block-alt {
-  background: #f4f7fb;
+  background: var(--jida-slate-50);
+  max-width: none;
 }
 
 .jida-about-block h2 {
-  margin-top: 0.35rem;
-  margin-bottom: 1.6rem;
-  color: #10223d;
-  font-size: clamp(1.5rem, 2.7vw, 2rem);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--jida-navy);
+  margin-bottom: 3rem;
 }
 
 .jida-about-card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1.5rem 1.6rem;
-  box-shadow: 0 2px 10px rgba(16, 34, 61, 0.06);
+  border: 1px solid var(--jida-slate-200);
+  border-radius: var(--jida-card-radius);
+  padding: 2.5rem;
+  box-shadow: var(--jida-card-shadow);
+  transition: all 0.3s ease;
+}
+
+.jida-about-card:hover {
+  box-shadow: var(--jida-card-shadow-hover);
+  border-color: var(--jida-gold-light);
 }
 
 .jida-about-block .jida-about-card {
-  max-width: 70ch;
+  max-width: none;
 }
 
 .jida-about-card p {
@@ -5836,10 +6247,16 @@ button.jida-password-toggle:hover {
 
 .jida-board-card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-top: 3px solid #d79b2b;
-  border-radius: 10px;
-  padding: 1.4rem 1.3rem;
+  border: 1px solid var(--jida-slate-200);
+  border-top: 4px solid var(--jida-gold);
+  border-radius: var(--jida-card-radius);
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.jida-board-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--jida-card-shadow-hover);
 }
 
 .jida-board-card h3 {
@@ -5849,12 +6266,12 @@ button.jida-password-toggle:hover {
 }
 
 .jida-board-role {
-  color: #6a81a5;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  color: var(--jida-gold);
+  font-size: 0.85rem;
+  font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 0.6rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
 }
 
 .jida-board-card p {
@@ -5875,19 +6292,21 @@ button.jida-password-toggle:hover {
 }
 
 .jida-about-back {
-  padding: 1.5rem max(2rem, 8vw) 3rem;
-  background: #f4f7fb;
+  padding: 4rem;
+  text-align: center;
+  background: var(--jida-slate-50);
 }
 
 .jida-about-back a {
-  color: #2e5fa4;
-  font-weight: 700;
+  color: var(--jida-navy);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  transition: color 0.2s;
 }
 
 .jida-about-back a:hover {
-  text-decoration: underline;
+  color: var(--jida-gold);
 }
 
 @media (max-width: 900px) {
@@ -5909,18 +6328,21 @@ button.jida-password-toggle:hover {
 /* ── Landing page: welcome banner (replaces the old "Why Publish" section) ── */
 
 .jida-welcome {
-  padding: 3rem max(2rem, 8vw);
+  padding: 6rem 4rem;
   background: #fff;
   text-align: center;
-  display: grid;
-  justify-items: center;
-  gap: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .jida-welcome h2 {
-  color: #10223d;
-  font-size: clamp(1.6rem, 3vw, 2.3rem);
-  max-width: 42ch;
+  color: var(--jida-navy);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  max-width: 35ch;
+  line-height: 1.2;
 }
 
 /* ── Landing page: Latest Articles / Recent Publications columns ──────────── */
@@ -7213,4 +7635,268 @@ button.jida-password-toggle:hover {
   .jida-queue-preview td:nth-child(6) { width: 9%; }
   .jida-queue-preview th:nth-child(7),
   .jida-queue-preview td:nth-child(7) { width: 26%; }
+}
+
+/* Publication System Refinement */
+.jida-hero-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.jida-btn-primary {
+  background: var(--jida-gold);
+  color: #fff;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(197, 160, 89, 0.2);
+}
+
+.jida-btn-primary:hover {
+  background: #b38f4d;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(197, 160, 89, 0.3);
+}
+
+.jida-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.jida-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #fff;
+}
+
+.jida-header-submit-btn {
+  background: var(--jida-gold);
+  color: #fff !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-left: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.jida-header-submit-btn:hover {
+  background: #b38f4d;
+  transform: scale(1.05);
+}
+
+.jida-search-helpers {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.jida-search-divider {
+  color: #cbd5e1;
+}
+
+/* Article Cards */
+.jida-article-cards {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.jida-article-card {
+  background: #fff;
+  border: 1px solid #f1f5f9;
+  padding: 2rem;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+}
+
+.jida-article-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 0;
+  background: var(--jida-gold);
+  transition: height 0.3s ease;
+  border-radius: 8px 0 0 8px;
+}
+
+.jida-article-card:hover {
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.jida-article-card:hover::after {
+  height: 100%;
+}
+
+.jida-article-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.jida-article-category {
+  color: var(--jida-gold);
+  border-bottom: 1px solid rgba(197, 160, 89, 0.3);
+  padding-bottom: 2px;
+}
+
+.jida-article-card-title {
+  font-family: serif;
+  font-size: 1.4rem;
+  color: var(--jida-navy);
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.25;
+  transition: color 0.2s ease;
+}
+
+.jida-article-card-title:hover {
+  color: var(--jida-gold);
+}
+
+.jida-article-card-authors {
+  font-size: 0.9rem;
+  color: #475569;
+  font-style: italic;
+}
+
+.jida-article-card-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.jida-doi {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.jida-article-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.jida-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: var(--jida-navy);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.jida-icon-btn:hover {
+  background: var(--jida-navy);
+  color: #fff;
+  border-color: var(--jida-navy);
+}
+
+/* Current Issue Callout */
+.jida-current-issue-callout {
+  background: var(--jida-navy);
+  color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.jida-current-issue-callout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(197, 160, 89, 0.1));
+  pointer-events: none;
+}
+
+.jida-issue-label {
+  display: inline-block;
+  background: var(--jida-gold);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.jida-current-issue-details h4 {
+  font-family: serif;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.jida-current-issue-details p {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.jida-issue-link {
+  color: var(--jida-gold);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.9rem;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.jida-issue-link:hover {
+  border-color: var(--jida-gold);
+}
+
+.jida-past-issues-list h3 {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .jida-hero-actions {
+    flex-direction: column;
+  }
+  
+  .jida-article-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { issueSlug } from "@/lib/public-content";
-import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown, ChevronRight, Download, Mail, UserPlus } from "lucide-react";
+import { Settings, X, User, Plus, Minus, Search, Quote, Link2, Check, ChevronDown, ChevronRight, Download, Mail, UserPlus, Menu } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -315,10 +315,11 @@ function AboutMenu() {
   }, []);
 
   const items: { href: string; label: string }[] = [
-    { href: "/about#about-jida", label: "About JIDA" },
-    { href: "/about#why-publish", label: "Why Publish with JIDA" },
-    { href: "/about#guidelines", label: "Guidelines to Publish with JIDA" },
+    { href: "/about#about-jida", label: "About the Journal" },
     { href: "/about#editorial-board", label: "Editorial Board" },
+    { href: "/about#why-publish", label: "Why Publish with JIDA" },
+    { href: "/about#guidelines", label: "Submission Guidelines" },
+    { href: "/announcements", label: "Announcements" },
   ];
 
   return (
@@ -354,11 +355,13 @@ export function AppHeader() {
   const [userRoles, setUserRoles] = useState<Role[]>([]);
   const [showProfile, setShowProfile] = useState(false);
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setUserRole(readRole());
     setUserRoles(readRoles());
     setIsLoggedIn(!!readToken());
+    setMobileMenuOpen(false);
   }, [pathname]);
 
   // Only known once fetched — session storage carries the role/token but not
@@ -402,41 +405,62 @@ export function AppHeader() {
           <span className="jida-header-name">Journal of Inter-Discourse Academia</span>
         </Link>
 
-        {isPublicPage ? (
-          <nav className="jida-header-nav jida-header-nav-public">
-            <AboutMenu />
-            <Link href="/#jida-articles-section">Articles &amp; Publication</Link>
+        {isPublicPage && (
+          <button
+            type="button"
+            className="jida-mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        )}
 
-            {/* Sign in only. Readers need no account to read or download, so a
-                Register button in the header invites accounts nobody wanted.
-                Authors — the one group who must register — reach it from
-                "Submit a manuscript" in the footer, and /signup still works
-                directly. This is tidiness, not security: the page is public
-                either way. */}
+        {isPublicPage ? (
+          <nav className={`jida-header-nav jida-header-nav-public ${mobileMenuOpen ? "open" : ""}`}>
+            <AboutMenu />
+            <Link href="/archive" onClick={() => setMobileMenuOpen(false)}>
+              Archives
+            </Link>
+            <Link href="/signup" className="jida-header-submit-btn" onClick={() => setMobileMenuOpen(false)}>
+              Submit Manuscript
+            </Link>
+
             {!isLoggedIn && (
-              <Link href="/login" className="jida-header-signin">
+              <Link href="/login" className="jida-header-signin" onClick={() => setMobileMenuOpen(false)}>
                 Sign in
               </Link>
             )}
 
             {isLoggedIn && (
-              <>
-                <Link href={homePortal} className="jida-nav-ghost">
+              <div className="jida-mobile-auth-actions">
+                <Link href={homePortal} className="jida-nav-ghost" onClick={() => setMobileMenuOpen(false)}>
                   My Workspace
                 </Link>
                 <button
                   type="button"
                   className="jida-settings-btn"
-                  onClick={() => setShowProfile(true)}
+                  onClick={() => {
+                    setShowProfile(true);
+                    setMobileMenuOpen(false);
+                  }}
                   title="Profile settings"
                   aria-label="Open profile settings"
                 >
                   <Settings size={16} />
+                  <span className="jida-mobile-only-label">Profile Settings</span>
                 </button>
-                <button type="button" onClick={handleLogout} className="jida-nav-btn">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="jida-nav-btn"
+                >
                   Log out
                 </button>
-              </>
+              </div>
             )}
           </nav>
         ) : (
